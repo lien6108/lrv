@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import AdminDashboard from './components/AdminDashboard';
 import ParticipantRoom from './components/ParticipantRoom';
-import { Gift, ShieldCheck } from 'lucide-react';
+import PresentPage from './components/PresentPage';
+import { Gift, MonitorPlay } from 'lucide-react';
 
 function App() {
   return (
@@ -11,12 +12,21 @@ function App() {
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
           <Gift color="var(--primary-color)" /> 線上抽獎系統
         </h2>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <Link to="/present" style={{ color: 'var(--text-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MonitorPlay size={20} /> 轉播畫面
+          </Link>
+          <Link to="/admin" style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>
+            管理員
+          </Link>
+        </div>
       </div>
 
       <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
         <Routes>
           <Route path="/" element={<ParticipantRoom />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/present" element={<PresentPage />} />
         </Routes>
       </main>
     </Router>
