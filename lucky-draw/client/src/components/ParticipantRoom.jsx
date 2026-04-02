@@ -10,12 +10,10 @@ const ParticipantRoom = () => {
   const [users, setUsers] = useState([]);
   const [prizes, setPrizes] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [currentUserToDraw, setCurrentUserToDraw] = useState(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [drawResult, setDrawResult] = useState(null);
   const [activeSpinner, setActiveSpinner] = useState(null);
   const [error, setError] = useState('');
-  const [allFinished, setAllFinished] = useState(false);
 
   // Fetch initial users
   useEffect(() => {
@@ -28,8 +26,6 @@ const ParticipantRoom = () => {
     
     // Listen for state updates
     socket.on('state_update', (state) => {
-      setCurrentUserToDraw(state.currentUser);
-      setAllFinished(state.allFinished);
       fetchUsers(); // Refresh to see who has drawn
     });
 
@@ -139,6 +135,8 @@ const ParticipantRoom = () => {
     );
   }
 
+  const currentUserToDraw = users.find(u => u.has_drawn === 0);
+  const allFinished = !currentUserToDraw && users.length > 0;
   const me = users.find(u => u.id === parseInt(selectedUserId));
   const isMyTurn = currentUserToDraw && currentUserToDraw.id === me?.id;
   const iHaveDrawn = me?.has_drawn === 1;
@@ -173,11 +171,11 @@ const ParticipantRoom = () => {
         <h2>{isMyTurn ? "🎉 輪到您了！" : iHaveDrawn ? "感謝您的參與！您已結束抽獎。" : "抽獎等待室"}</h2>
         {allFinished && <h3>所有抽獎已順利結束！請查看最終得獎清單。</h3>}
         
-        {!allFinished && currentUserToDraw && !isMyTurn && !isSpinning && !drawResult && !iHaveDrawn && (
+        {!allFinished && currentUserToDraw && !isMyTurn && !isSpinning && !iHaveDrawn && (
           <p>目前正在等待 <strong>{currentUserToDraw.name}</strong> 進行抽獎。</p>
         )}
         
-        {isMyTurn && !isSpinning && !drawResult && (
+        {isMyTurn && !(isSpinning && activeSpinner?.id === me?.id) && !(drawResult && activeSpinner?.id === me?.id) && (
           <>
             <p>點擊下方按鈕，從您的專屬獎品池中抽出獎品： <strong>{me?.pool_name || '一般獎項'}</strong></p>
             <button 
