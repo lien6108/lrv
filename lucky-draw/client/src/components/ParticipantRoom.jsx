@@ -8,6 +8,7 @@ const socket = io(API_URL);
 
 const ParticipantRoom = () => {
   const [users, setUsers] = useState([]);
+  const [prizes, setPrizes] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [currentUserToDraw, setCurrentUserToDraw] = useState(null);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -19,6 +20,11 @@ const ParticipantRoom = () => {
   // Fetch initial users
   useEffect(() => {
     fetchUsers();
+    
+    // Fallback polling: fetch every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchUsers();
+    }, 5000);
     
     // Listen for state updates
     socket.on('state_update', (state) => {
@@ -44,6 +50,7 @@ const ParticipantRoom = () => {
     });
 
     return () => {
+      clearInterval(intervalId);
       socket.off('state_update');
       socket.off('spin_started');
       socket.off('draw_event');
@@ -52,9 +59,14 @@ const ParticipantRoom = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/users`);
-      const data = await res.json();
-      setUsers(data);
+      const [uRes, pRes] = await Promise.all([
+        fetch(`${API_URL}/api/users`),
+        fetch(`${API_URL}/api/prizes`)
+      ]);
+      const uData = await uRes.json();
+      const pData = await pRes.json();
+      setUsers(uData);
+      if(Array.isArray(pData)) setPrizes(pData);
     } catch (err) {
       console.error(err);
     }
@@ -130,9 +142,33 @@ const ParticipantRoom = () => {
   const me = users.find(u => u.id === parseInt(selectedUserId));
   const isMyTurn = currentUserToDraw && currentUserToDraw.id === me?.id;
   const iHaveDrawn = me?.has_drawn === 1;
+  const myPrizes = prizes.filter(p => p.prize_pool_id === me?.prize_pool_id);
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+      
+      {!allFinished && (
+        <div className="glass-panel mb-4" style={{ textAlign: 'left' }}>
+          <h3 style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>抽籤資訊</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <p><strong>您的順序：</strong> <span style={{ color: 'var(--primary-color)', fontSize: '1.2rem', fontWeight: 'bold' }}>{me?.order_index || '-'}</span></p>
+              <p><strong>目前抽獎進度：</strong> <span style={{ color: '#3b82f6', fontSize: '1.2rem', fontWeight: 'bold' }}>{currentUserToDraw?.order_index || '-'}</span></p>
+              <p><strong>專屬獎池：</strong> <span style={{ fontWeight: 'bold' }}>{me?.pool_name || '一般獎項'}</span></p>
+            </div>
+            <div>
+              <strong>該獎池包含獎項：</strong>
+              <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem', color: 'var(--text-secondary)' }}>
+                {myPrizes.length === 0 && <li>目前無獎項或已抽完</li>}
+                {myPrizes.map(p => (
+                  <li key={p.id}>{p.name} <span style={{ fontSize: '0.85em', color: p.remaining > 0 ? '#10b981' : '#ef4444' }}>(剩餘: {p.remaining}/{p.quantity})</span></li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="glass-panel mb-4">
         <h2>{isMyTurn ? "🎉 輪到您了！" : iHaveDrawn ? "感謝您的參與！您已結束抽獎。" : "抽獎等待室"}</h2>
         {allFinished && <h3>所有抽獎已順利結束！請查看最終得獎清單。</h3>}

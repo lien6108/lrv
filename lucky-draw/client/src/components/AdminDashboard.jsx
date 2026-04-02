@@ -16,6 +16,10 @@ const AdminDashboard = () => {
   const [newUser, setNewUser] = useState({ name: '', order_index: '', prize_pool_id: '' });
   const [newPrize, setNewPrize] = useState({ name: '', quantity: '', prize_pool_id: '', image_url: '' });
 
+  // Edit states
+  const [editingPrizeId, setEditingPrizeId] = useState(null);
+  const [editPrizeForm, setEditPrizeForm] = useState({ quantity: '', remaining: '' });
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchData();
@@ -118,6 +122,16 @@ const AdminDashboard = () => {
       await fetch(`${API_URL}/api/prizes/${id}`, { method: 'DELETE' });
       fetchData();
     }
+  };
+
+  const handleSavePrize = async (id) => {
+    await fetch(`${API_URL}/api/prizes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editPrizeForm)
+    });
+    setEditingPrizeId(null);
+    fetchData();
   };
 
   const resetSystem = async () => {
@@ -268,14 +282,41 @@ const AdminDashboard = () => {
               <thead><tr><th>獎品名稱</th><th>所屬池</th><th>剩餘/總數</th><th>操作</th></tr></thead>
               <tbody>
                 {prizes.length === 0 && <tr><td colSpan="4">尚未新增獎品。</td></tr>}
-                {prizes.map(p => (
-                  <tr key={p.id}>
-                    <td>{p.name}</td>
-                    <td>{p.pool_name}</td>
-                    <td>{p.remaining}/{p.quantity}</td>
-                    <td><button className="danger" style={{ padding: '0.2rem 0.5rem' }} onClick={() => deletePrize(p.id)}>刪除</button></td>
-                  </tr>
-                ))}
+                {prizes.map(p => {
+                  const isEditing = editingPrizeId === p.id;
+                  return (
+                    <tr key={p.id}>
+                      <td>{p.name}</td>
+                      <td>{p.pool_name}</td>
+                      <td>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                            <input type="number" style={{ width: '60px', margin: 0, padding: '0.5rem' }} value={editPrizeForm.remaining} onChange={e => setEditPrizeForm({ ...editPrizeForm, remaining: e.target.value })} title="剩餘數量" />
+                            /
+                            <input type="number" style={{ width: '60px', margin: 0, padding: '0.5rem' }} value={editPrizeForm.quantity} onChange={e => setEditPrizeForm({ ...editPrizeForm, quantity: e.target.value })} title="總數量" />
+                          </div>
+                        ) : (
+                          `${p.remaining}/${p.quantity}`
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          {isEditing ? (
+                            <>
+                              <button style={{ padding: '0.2rem 0.5rem' }} onClick={() => handleSavePrize(p.id)}>儲存</button>
+                              <button className="danger" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setEditingPrizeId(null)}>取消</button>
+                            </>
+                          ) : (
+                            <>
+                              <button style={{ padding: '0.2rem 0.5rem', background: '#3b82f6' }} onClick={() => { setEditingPrizeId(p.id); setEditPrizeForm({ quantity: p.quantity, remaining: p.remaining }); }}>編輯</button>
+                              <button className="danger" style={{ padding: '0.2rem 0.5rem' }} onClick={() => deletePrize(p.id)}>刪除</button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

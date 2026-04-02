@@ -114,14 +114,18 @@ app.post('/api/users', async (req, res) => {
     res.status(500).json({ error: '新增失敗，可能違反資料庫限制' });
   }
 });
-app.delete('/api/users/:id', async (req, res) => {
-  await runQuery('DELETE FROM users WHERE id = ?', [req.params.id]);
-  broadcastState();
-  res.json({ success: true });
-});
 app.delete('/api/users/all', async (req, res) => {
   await runQuery('DELETE FROM users');
   broadcastState();
+  res.json({ success: true });
+});
+app.delete('/api/users/:id', async (req, res) => {
+  const user = await getQuery('SELECT order_index FROM users WHERE id = ?', [req.params.id]);
+  if (user) {
+    await runQuery('DELETE FROM users WHERE id = ?', [req.params.id]);
+    await runQuery('UPDATE users SET order_index = order_index - 1 WHERE order_index > ?', [user.order_index]);
+    broadcastState();
+  }
   res.json({ success: true });
 });
 
@@ -144,6 +148,11 @@ app.post('/api/prizes', async (req, res) => {
 });
 app.delete('/api/prizes/:id', async (req, res) => {
   await runQuery('DELETE FROM prizes WHERE id = ?', [req.params.id]);
+  res.json({ success: true });
+});
+app.put('/api/prizes/:id', async (req, res) => {
+  const { quantity, remaining } = req.body;
+  await runQuery('UPDATE prizes SET quantity = ?, remaining = ? WHERE id = ?', [quantity, remaining, req.params.id]);
   res.json({ success: true });
 });
 
