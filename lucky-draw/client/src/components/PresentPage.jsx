@@ -54,21 +54,24 @@ const PresentPage = () => {
   };
 
   return (
-    <div style={{ padding: '0 2rem', height: 'calc(100vh - 100px)', overflowY: 'auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', textShadow: '0 0 20px rgba(139, 92, 246, 0.5)' }}>
-          <Trophy size={40} color="var(--primary-color)" /> 線上抽獎即時狀態
+    <div style={{ padding: '1rem 1.5rem', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ textAlign: 'center', marginBottom: '1rem', flexShrink: 0 }}>
+        <h1 style={{ fontSize: '2rem', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', textShadow: '0 0 20px rgba(139, 92, 246, 0.5)' }}>
+          <Trophy size={32} color="var(--primary-color)" /> 線上抽獎即時狀態
         </h1>
         {allFinished && (
-          <h2 style={{ color: '#10b981', animation: 'pulse 2s infinite' }}>所有抽獎已順利結束！</h2>
+          <h2 style={{ color: '#10b981', margin: '0.5rem 0', animation: 'pulse 2s infinite' }}>所有抽獎已順利結束！</h2>
         )}
       </div>
 
       <div style={{ 
+        flex: 1,
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-        gap: '1.5rem',
-        paddingBottom: '2rem'
+        gridTemplateColumns: 'repeat(3, 1fr)', 
+        alignContent: 'start',
+        gap: '0.6rem',
+        overflowY: 'auto',
+        paddingRight: '0.5rem'
       }}>
         {users.map((user) => {
           const isDrawing = isSpinning && activeSpinner?.id === user.id;
@@ -76,19 +79,22 @@ const PresentPage = () => {
           const hasDrawn = user.has_drawn === 1;
 
           let cardStyle = {
-            padding: '1.5rem',
-            borderRadius: '16px',
+            padding: '1rem',
+            borderRadius: '12px',
             background: 'var(--glass-bg)',
             border: '1px solid var(--glass-border)',
             transition: 'all 0.3s ease',
             position: 'relative',
             overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center'
           };
 
           if (isDrawing) {
             cardStyle.border = '2px solid var(--primary-color)';
             cardStyle.boxShadow = '0 0 30px rgba(139, 92, 246, 0.6)';
-            cardStyle.transform = 'scale(1.05)';
+            cardStyle.transform = 'scale(1.02)';
             cardStyle.zIndex = 10;
           } else if (isNext) {
             cardStyle.border = '2px solid #3b82f6';
@@ -113,33 +119,30 @@ const PresentPage = () => {
               
               <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Users size={24} /> {user.name}
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Users size={20} /> {user.name}
                   </h3>
-                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
                     順序: {user.order_index} | 獎池: {user.pool_name || '一般獎項'}
                   </div>
                 </div>
               </div>
 
-              <div style={{ marginTop: '1.5rem', position: 'relative', zIndex: 1, minHeight: '60px', display: 'flex', alignItems: 'center' }}>
+              <div style={{ marginTop: '1rem', position: 'relative', zIndex: 1, minHeight: '40px', display: 'flex', alignItems: 'center' }}>
                 {isDrawing ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '1.2rem', fontWeight: 'bold', animation: 'pulse 1s infinite' }}>
-                    <Play size={20} className="animate-spin" /> 正在抽獎中...
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '1rem', fontWeight: 'bold', animation: 'pulse 1s infinite' }}>
+                    <Play size={18} className="animate-spin" /> 正在抽獎中...
                   </div>
                 ) : hasDrawn ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    <CheckCircle2 size={24} /> 已完成抽獎
-                    {/* Note: In a complete implementation we might want to fetch exact prizes they won. 
-                        Usually we can join draw_results. For now we show completion. 
-                        If we want to show exact prize, backend /api/users needs to return the prize name. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontSize: '1rem', fontWeight: 'bold' }}>
+                    <CheckCircle2 size={18} /> 已完成抽獎
                   </div>
                 ) : isNext ? (
-                  <div style={{ color: '#3b82f6', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                  <div style={{ color: '#3b82f6', fontSize: '1rem', fontWeight: 'bold' }}>
                     🟢 輪到他了！
                   </div>
                 ) : (
-                  <div style={{ color: 'var(--text-secondary)' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                     等待中...
                   </div>
                 )}

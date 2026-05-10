@@ -12,14 +12,6 @@ function App() {
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
           <Gift color="var(--primary-color)" /> 線上抽獎系統
         </h2>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <Link to="/present" style={{ color: 'var(--text-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <MonitorPlay size={20} /> 轉播畫面
-          </Link>
-          <Link to="/admin" style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>
-            管理員
-          </Link>
-        </div>
       </div>
 
       <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { API_URL } from '../config';
 
@@ -50,7 +51,7 @@ const AdminDashboard = () => {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (password === 'admin123') { // Simple hardcoded password
+    if (password === 'FinOps@2F') { // Simple hardcoded password
       setIsAuthenticated(true);
     } else {
       alert('密碼錯誤！');
@@ -171,7 +172,7 @@ const AdminDashboard = () => {
     return (
       <div className="glass-panel" style={{ maxWidth: '400px', margin: '4rem auto', textAlign: 'center' }}>
         <h2>管理員登入</h2>
-        <p className="mb-4 text-sm text-secondary">預設密碼為 <strong>admin123</strong></p>
+        <p className="mb-4 text-sm text-secondary">請輸入後台專屬管理員密碼</p>
         <form onSubmit={handleLogin}>
           <input
             type="password"
@@ -192,6 +193,8 @@ const AdminDashboard = () => {
       {/* 側邊導覽列 */}
       <nav className="glass-panel" style={{ position: 'sticky', top: '2rem', minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <h3 style={{ marginBottom: '0.5rem', color: 'var(--primary-color)' }}>選單</h3>
+        <Link to="/present" style={{ color: 'var(--text-primary)', textDecoration: 'none', padding: '0.5rem', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.2)', textAlign: 'center', fontWeight: 'bold' }} onMouseOver={e => e.target.style.background='rgba(139, 92, 246, 0.4)'} onMouseOut={e => e.target.style.background='rgba(139, 92, 246, 0.2)'}>📺 開啟轉播畫面</Link>
+        <hr style={{ borderColor: 'var(--glass-border)', margin: '0.5rem 0' }} />
         <a href="#pools" style={{ color: 'var(--text-primary)', textDecoration: 'none', padding: '0.5rem', borderRadius: '8px' }} onMouseOver={e => e.target.style.background='rgba(255,255,255,0.1)'} onMouseOut={e => e.target.style.background='transparent'}>🎁 1. 獎品池管理</a>
         <a href="#users" style={{ color: 'var(--text-primary)', textDecoration: 'none', padding: '0.5rem', borderRadius: '8px' }} onMouseOver={e => e.target.style.background='rgba(255,255,255,0.1)'} onMouseOut={e => e.target.style.background='transparent'}>👥 2. 參與者順序</a>
         <a href="#prizes" style={{ color: 'var(--text-primary)', textDecoration: 'none', padding: '0.5rem', borderRadius: '8px' }} onMouseOver={e => e.target.style.background='rgba(255,255,255,0.1)'} onMouseOut={e => e.target.style.background='transparent'}>🏆 3. 獎品管理</a>

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  lucky-draw-app:
+    build: .
+    ports:
+      - "80:3001"
+    environment:
+      - DB_PATH=/app/data/database.sqlite
+    volumes:
+      - lucky_draw_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  lucky_draw_data:

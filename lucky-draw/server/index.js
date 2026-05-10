@@ -2,11 +2,19 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { initDb, runQuery, allQuery, getQuery } from './database.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -166,6 +174,11 @@ app.get('/api/results', async (req, res) => {
     ORDER BY r.timestamp DESC
   `);
   res.json(results);
+});
+
+// Catch-all route to serve the React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 // --- User Draw Action ---
