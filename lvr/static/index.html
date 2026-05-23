@@ -30,10 +30,15 @@
       @apply bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium px-4 py-2 rounded-lg
              text-sm transition-colors duration-150 cursor-pointer;
     }
-    th { cursor: pointer; user-select: none; }
+    th { user-select: none; }
     th:hover { color: #a5b4fc; }
     .sort-asc::after  { content: ' ▲'; font-size: 0.65rem; }
     .sort-desc::after { content: ' ▼'; font-size: 0.65rem; }
+    #studio-panel {
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    #studio-panel.open { transform: translateX(0); }
     .tag-a { @apply bg-indigo-900 text-indigo-300 text-xs px-2 py-0.5 rounded-full; }
     .tag-b { @apply bg-purple-900 text-purple-300 text-xs px-2 py-0.5 rounded-full; }
   </style>
@@ -131,12 +136,62 @@
     <!-- Main Content -->
     <main class="flex-1 flex flex-col overflow-hidden">
 
+      <!-- Dashboard -->
+      <div class="bg-gray-900 border-b border-gray-800 px-6 py-4">
+        <div class="flex flex-wrap gap-4 items-start">
+
+          <!-- Stat Cards -->
+          <div class="flex gap-3 flex-shrink-0">
+            <div class="bg-gray-800 rounded-lg px-4 py-3 min-w-[110px]">
+              <div class="text-xs text-gray-500 mb-1">資料總筆數</div>
+              <div class="text-lg font-bold text-white leading-tight" id="dash-total">—</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg px-4 py-3 min-w-[110px]">
+              <div class="text-xs text-gray-500 mb-1">買賣成交</div>
+              <div class="text-lg font-bold text-indigo-400 leading-tight" id="dash-sale">—</div>
+              <div class="text-xs text-gray-600 mt-0.5" id="dash-sale-pct"></div>
+            </div>
+            <div class="bg-gray-800 rounded-lg px-4 py-3 min-w-[110px]">
+              <div class="text-xs text-gray-500 mb-1">預售屋</div>
+              <div class="text-lg font-bold text-purple-400 leading-tight" id="dash-presale">—</div>
+              <div class="text-xs text-gray-600 mt-0.5" id="dash-presale-pct"></div>
+            </div>
+          </div>
+
+          <!-- Building Type Distribution -->
+          <div class="flex-1 min-w-[260px]">
+            <div class="text-xs text-gray-500 mb-2">建物型態分佈</div>
+            <div id="dash-building-types" class="space-y-1.5"></div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- Stats Bar -->
       <div class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
-        <div class="text-sm text-gray-400">
+        <div class="flex items-center gap-3 text-sm text-gray-400">
           共找到 <span id="total-count" class="text-white font-semibold">—</span> 筆資料
+          <span class="text-gray-700">｜</span>
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs text-gray-500">每頁顯示</span>
+            <select id="page-size" class="bg-gray-800 border border-gray-600 rounded px-2 py-0.5 text-xs text-gray-100 focus:outline-none focus:border-brand-500 cursor-pointer">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+            <span class="text-xs text-gray-500">筆</span>
+          </div>
         </div>
-        <div id="pagination-info" class="text-xs text-gray-500"></div>
+        <div class="flex items-center gap-3">
+          <div id="pagination-info" class="text-xs text-gray-500"></div>
+          <button id="btn-studio" class="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+            </svg>
+            欄位設定
+          </button>
+        </div>
       </div>
 
       <!-- Table -->
@@ -145,19 +200,7 @@
         <div id="empty" class="hidden text-center py-12 text-gray-500 text-sm">找不到符合條件的資料</div>
 
         <table class="w-full text-sm border-collapse" id="result-table">
-          <thead class="sticky top-0 bg-gray-900 z-10">
-            <tr class="text-left text-xs text-gray-400 uppercase tracking-wider">
-              <th class="px-3 py-3 border-b border-gray-700">鄉鎮市區</th>
-              <th class="px-3 py-3 border-b border-gray-700" data-sort="year_month">交易年月</th>
-              <th class="px-3 py-3 border-b border-gray-700">社區案名</th>
-              <th class="px-3 py-3 border-b border-gray-700">建物型態</th>
-              <th class="px-3 py-3 border-b border-gray-700">格局</th>
-              <th class="px-3 py-3 border-b border-gray-700" data-sort="total_price">總價（萬）</th>
-              <th class="px-3 py-3 border-b border-gray-700" data-sort="unit_price">單價（元/㎡）</th>
-              <th class="px-3 py-3 border-b border-gray-700">面積（坪）</th>
-              <th class="px-3 py-3 border-b border-gray-700">來源</th>
-            </tr>
-          </thead>
+          <thead id="result-head" class="sticky top-0 bg-gray-900 z-10"></thead>
           <tbody id="result-body" class="divide-y divide-gray-800"></tbody>
         </table>
       </div>
@@ -170,6 +213,29 @@
       </div>
 
     </main>
+  </div>
+
+  <!-- Studio Overlay -->
+  <div id="studio-overlay" class="fixed inset-0 bg-black/60 z-40 hidden"></div>
+
+  <!-- Studio Panel -->
+  <div id="studio-panel" class="fixed top-0 right-0 h-full w-72 bg-gray-900 border-l border-gray-700 z-50 flex flex-col">
+    <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h3 class="text-sm font-semibold text-white">欄位設定</h3>
+        <p class="text-xs text-gray-500 mt-0.5">選擇要顯示的欄位</p>
+      </div>
+      <button onclick="closeStudio()" class="text-gray-400 hover:text-white transition-colors cursor-pointer p-1 rounded hover:bg-gray-800">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="flex-1 overflow-y-auto px-4 py-4" id="studio-groups"></div>
+    <div class="px-5 py-4 border-t border-gray-800 flex gap-2 flex-shrink-0">
+      <button onclick="resetColumns()" class="btn-ghost flex-1 text-xs py-1.5">恢復預設</button>
+      <button onclick="closeStudio()" class="btn-primary flex-1 text-xs py-1.5">完成</button>
+    </div>
   </div>
 
   <script src="/static/app.js"></script>

@@ -83,6 +83,32 @@ def query_transactions(
     }
 
 
+@router.get("/stats")
+def get_stats(db: Session = Depends(get_db)):
+    total = db.query(func.count(Transaction.id)).scalar() or 0
+
+    by_source = dict(
+        db.query(Transaction.來源檔案, func.count(Transaction.id))
+        .group_by(Transaction.來源檔案)
+        .all()
+    )
+
+    by_building_type = dict(
+        db.query(Transaction.建物型態, func.count(Transaction.id))
+        .filter(Transaction.建物型態.isnot(None))
+        .group_by(Transaction.建物型態)
+        .order_by(func.count(Transaction.id).desc())
+        .limit(8)
+        .all()
+    )
+
+    return {
+        "total": total,
+        "by_source": by_source,
+        "by_building_type": by_building_type,
+    }
+
+
 @router.get("/options")
 def get_options(db: Session = Depends(get_db)):
     districts = [r[0] for r in db.query(Transaction.鄉鎮市區).distinct().order_by(Transaction.鄉鎮市區) if r[0]]
@@ -118,22 +144,41 @@ def trigger_import(background_tasks: BackgroundTasks, db: Session = Depends(get_
 def _serialize(t: Transaction) -> dict:
     return {
         "id": t.id,
+        "移轉編號": t.移轉編號,
         "鄉鎮市區": t.鄉鎮市區,
+        "區段": t.區段,
+        "交易標的": t.交易標的,
+        "土地區段位置建物區段門牌": t.土地區段位置建物區段門牌,
+        "土地移轉總面積_坪": t.土地移轉總面積_坪,
+        "使用分區編定": t.使用分區編定,
         "交易年月": t.交易年月,
-        "社區案名": t.社區案名,
+        "交易筆棟數": t.交易筆棟數,
+        "移轉層次": t.移轉層次,
+        "總樓層數": t.總樓層數,
         "建物型態": t.建物型態,
+        "主要用途": t.主要用途,
+        "主要建材": t.主要建材,
+        "建築完成年月": t.建築完成年月,
         "格局_房": t.格局_房,
         "格局_廳": t.格局_廳,
         "格局_衛": t.格局_衛,
-        "總價_萬元": t.總價_萬元,
-        "總價_元": t.總價_元,
-        "單價_元每平方": t.單價_元每平方,
-        "建物移轉總面積_坪": t.建物移轉總面積_坪,
-        "建物型態": t.建物型態,
-        "土地區段位置建物區段門牌": t.土地區段位置建物區段門牌,
-        "移轉層次": t.移轉層次,
-        "總樓層數": t.總樓層數,
-        "建築完成年月": t.建築完成年月,
+        "格局_隔間": t.格局_隔間,
         "有無管理組織": t.有無管理組織,
+        "總價_元": t.總價_元,
+        "總價_萬元": t.總價_萬元,
+        "單價_元每平方": t.單價_元每平方,
+        "建物單價_萬每坪": t.建物單價_萬每坪,
+        "車位類別": t.車位類別,
+        "車位移轉總面積_坪": t.車位移轉總面積_坪,
+        "車位總價_元": t.車位總價_元,
+        "棟別": t.棟別,
+        "建物移轉總面積_坪": t.建物移轉總面積_坪,
+        "建物移轉不含車面積_坪": t.建物移轉不含車面積_坪,
+        "主建物面積": t.主建物面積,
+        "附屬建物面積": t.附屬建物面積,
+        "陽台面積": t.陽台面積,
+        "電梯": t.電梯,
+        "社區案名": t.社區案名,
+        "備註": t.備註,
         "來源檔案": t.來源檔案,
     }

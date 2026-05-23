@@ -44,6 +44,7 @@ const COL_MAP_A = {
 const COL_MAP_B = {
   ...COL_MAP_A,
   "建案名稱": "community_name",
+  "棟及號": "building_block",
 };
 
 const DB_COLS = [
@@ -55,7 +56,7 @@ const DB_COLS = [
   "land_area_ping", "building_area_ping", "building_area_excl_parking",
   "parking_area_ping", "main_building_area", "auxiliary_building_area", "balcony_area",
   "total_price", "total_price_10k", "unit_price_sqm", "unit_price_ping", "parking_price",
-  "parking_type", "zoning", "non_urban_zoning", "non_urban_land_use",
+  "parking_type", "building_block", "zoning", "non_urban_zoning", "non_urban_land_use",
   "community_name", "remarks", "transfer_id", "source_id",
 ];
 
