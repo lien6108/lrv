@@ -59,9 +59,11 @@ CREATE TABLE IF NOT EXISTS transactions (
   -- 其他
   community_name              TEXT,
   remarks                     TEXT,
-  transfer_id                 TEXT
+  transfer_id                 TEXT,
+  source_id                   TEXT     -- 去重唯一識別碼（移轉編號 or 編號）
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_source_id       ON transactions(source_id) WHERE source_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_district         ON transactions(district);
 CREATE INDEX IF NOT EXISTS idx_building_type    ON transactions(building_type);
 CREATE INDEX IF NOT EXISTS idx_transaction_date ON transactions(transaction_date);
