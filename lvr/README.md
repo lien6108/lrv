@@ -5,9 +5,10 @@
 ## 功能
 
 - **自動資料同步** — 每月 5、15、25 日凌晨 00:00（台北時區）自動從政府開放資料下載最新實價登錄 XLS 並匯入資料庫，以移轉編號去重避免重複寫入
+- **Email 通知** — 每次資料更新完成後，自動寄送 HTML 格式摘要信（含各來源新增筆數、錯誤訊息）
 - **REST API** — 支援多條件篩選（行政區、年月、社區案名、建物型態、總價、單價、格局）、分頁與排序
 - **前端查詢介面** — 靜態 HTML/JS，直接連接後端 API，無需額外建置
-- **手動觸發匯入** — 提供 API endpoint 可隨時觸發資料更新
+- **手動觸發匯入** — 提供 API endpoint 可隨時觸發資料更新並寄送通知信
 
 ## 技術架構
 
@@ -19,6 +20,7 @@
 | 資料處理 | pandas + openpyxl |
 | 排程 | APScheduler (BackgroundScheduler) |
 | 前端 | 原生 HTML / JavaScript |
+| Email 通知 | Python smtplib + Gmail SMTP |
 
 ## 快速開始
 
@@ -27,6 +29,28 @@
 ```bash
 pip install -r requirements.txt
 ```
+
+### 設定 Email 通知
+
+複製範本並填入 Gmail 憑證：
+
+```bash
+cp .env.example .env
+```
+
+編輯 `.env`：
+
+```env
+GMAIL_USER=your_gmail@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+```
+
+> **取得 App Password：**
+> 1. 前往 [Google 帳戶安全性](https://myaccount.google.com/security) 開啟兩步驟驗證
+> 2. 前往 [應用程式密碼](https://myaccount.google.com/apppasswords)，選擇「郵件」產生 16 位密碼
+> 3. 填入 `.env` 的 `GMAIL_APP_PASSWORD`
+>
+> 若未設定 `.env`，系統仍可正常運作，只是不會寄信（log 會顯示警告）。
 
 ### 啟動伺服器
 
@@ -102,11 +126,13 @@ lvr/
 ├── database.py      # 資料庫連線、初始化
 ├── importer.py      # XLS 下載、欄位對應、資料寫入邏輯
 ├── scheduler.py     # APScheduler 排程設定
+├── notifier.py      # Email 通知（Gmail SMTP）
 ├── routers/
 │   └── transactions.py  # /api 路由
 ├── static/          # 前端靜態檔案
 ├── data/            # 下載暫存目錄（自動建立）
 ├── schema.sql       # 資料庫 schema 參考
+├── .env.example     # 環境變數範本
 ├── requirements.txt
 └── wrangler.toml    # Cloudflare Worker / D1 設定（備用部署）
 ```

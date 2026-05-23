@@ -6,6 +6,7 @@ from sqlalchemy import func
 from database import get_db
 from models import Transaction
 from importer import download_and_import
+from notifier import send_import_notification
 
 router = APIRouter(prefix="/api")
 
@@ -103,9 +104,14 @@ def get_options(db: Session = Depends(get_db)):
     }
 
 
+async def _import_and_notify(db: Session):
+    results = download_and_import(db)
+    send_import_notification(results, triggered_by="手動觸發")
+
+
 @router.post("/import/trigger")
 def trigger_import(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    background_tasks.add_task(download_and_import, db)
+    background_tasks.add_task(_import_and_notify, db)
     return {"status": "started"}
 
 

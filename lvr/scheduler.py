@@ -4,6 +4,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from database import SessionLocal
 from importer import download_and_import
+from notifier import send_import_notification
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ def _scheduled_import():
     try:
         results = download_and_import(db)
         logger.info("Scheduled import done: %s", results)
+        send_import_notification(results, triggered_by="排程自動觸發")
     finally:
         db.close()
 
