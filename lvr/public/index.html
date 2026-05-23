@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>實價登錄查詢</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">🏠 實價登錄查詢</h1>
+
+    <!-- 篩選區 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">地區</label>
+          <select id="district" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <option value="">全部</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">建物型態</label>
+          <select id="buildingType" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <option value="">全部</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">價格範圍（萬元）</label>
+          <div class="flex gap-2 items-center">
+            <input id="minPrice" type="number" placeholder="最低" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <span class="text-gray-400">~</span>
+            <input id="maxPrice" type="number" placeholder="最高" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">交易年份（西元）</label>
+          <div class="flex gap-2 items-center">
+            <input id="yearFrom" type="number" placeholder="起" min="1990" max="2030" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <span class="text-gray-400">~</span>
+            <input id="yearTo" type="number" placeholder="迄" min="1990" max="2030" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end">
+        <button onclick="search(1)" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors">
+          查詢
+        </button>
+      </div>
+    </div>
+
+    <!-- 結果區 -->
+    <div id="resultInfo" class="text-sm text-gray-500 mb-3 hidden"></div>
+    <div id="tableWrapper" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="text-left px-4 py-3 font-medium text-gray-600">地址</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-600">型態</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-600">交易年月</th>
+            <th class="text-right px-4 py-3 font-medium text-gray-600">總價（萬）</th>
+            <th class="text-right px-4 py-3 font-medium text-gray-600">建物坪數</th>
+            <th class="text-right px-4 py-3 font-medium text-gray-600">萬／坪</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-600">格局</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 分頁 -->
+    <div id="pagination" class="flex justify-center items-center gap-4 mt-4 hidden">
+      <button onclick="changePage(-1)" id="prevBtn" class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">上一頁</button>
+      <span id="pageInfo" class="text-sm text-gray-600"></span>
+      <button onclick="changePage(1)" id="nextBtn" class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">下一頁</button>
+    </div>
+
+    <div id="emptyMsg" class="text-center text-gray-400 py-16 hidden">找不到符合條件的資料</div>
+    <div id="loadingMsg" class="text-center text-gray-400 py-16 hidden">查詢中…</div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let currentTotal = 0;
+    const LIMIT = 20;
+
+    async function loadOptions() {
+      const res = await fetch("/api/options");
+      const data = await res.json();
+      const districtSel = document.getElementById("district");
+      const typeSel = document.getElementById("buildingType");
+      data.districts.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d; opt.textContent = d;
+        districtSel.appendChild(opt);
+      });
+      data.building_types.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t; opt.textContent = t;
+        typeSel.appendChild(opt);
+      });
+    }
+
+    function yearToRoc(year, isEnd) {
+      if (!year) return 0;
+      const roc = parseInt(year) - 1911;
+      return isEnd ? roc * 10000 + 1231 : roc * 10000 + 101;
+    }
+
+    function rocToDisplay(rocDate) {
+      if (!rocDate) return "";
+      const s = String(rocDate);
+      if (s.length === 7) {
+        return `民國${s.slice(0, 3)}年${s.slice(3, 5)}月`;
+      }
+      return s;
+    }
+
+    function buildParams(page) {
+      const params = new URLSearchParams();
+      const district = document.getElementById("district").value;
+      const buildingType = document.getElementById("buildingType").value;
+      const minPrice = document.getElementById("minPrice").value;
+      const maxPrice = document.getElementById("maxPrice").value;
+      const yearFrom = document.getElementById("yearFrom").value;
+      const yearTo = document.getElementById("yearTo").value;
+
+      if (district) params.set("district", district);
+      if (buildingType) params.set("building_type", buildingType);
+      if (minPrice) params.set("min_price", minPrice);
+      if (maxPrice) params.set("max_price", maxPrice);
+      if (yearFrom) params.set("date_from", yearToRoc(yearFrom, false));
+      if (yearTo) params.set("date_to", yearToRoc(yearTo, true));
+      params.set("page", page);
+      params.set("limit", LIMIT);
+      return params;
+    }
+
+    async function search(page) {
+      currentPage = page;
+      show("loadingMsg");
+      hide("tableWrapper"); hide("resultInfo"); hide("pagination"); hide("emptyMsg");
+
+      const params = buildParams(page);
+      const res = await fetch(`/api/search?${params}`);
+      const data = await res.json();
+
+      hide("loadingMsg");
+      currentTotal = data.total;
+
+      if (data.total === 0) {
+        show("emptyMsg"); return;
+      }
+
+      document.getElementById("resultInfo").textContent = `找到 ${data.total.toLocaleString()} 筆結果`;
+      show("resultInfo"); show("tableWrapper");
+
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = data.data.map(r => `
+        <tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="px-4 py-3 text-gray-800 max-w-xs truncate" title="${r.address || ""}">${r.address || "—"}</td>
+          <td class="px-4 py-3 text-gray-600">${r.building_type || "—"}</td>
+          <td class="px-4 py-3 text-gray-600">${rocToDisplay(r.transaction_date)}</td>
+          <td class="px-4 py-3 text-right font-medium text-gray-800">${r.total_price_10k ? Number(r.total_price_10k).toLocaleString(undefined, {maximumFractionDigits: 1}) : "—"}</td>
+          <td class="px-4 py-3 text-right text-gray-600">${r.building_area_excl_parking ? Number(r.building_area_excl_parking).toFixed(2) : "—"}</td>
+          <td class="px-4 py-3 text-right text-blue-600">${r.unit_price_ping ? Number(r.unit_price_ping).toFixed(2) : "—"}</td>
+          <td class="px-4 py-3 text-gray-600">${layout(r)}</td>
+        </tr>
+      `).join("");
+
+      const totalPages = Math.ceil(data.total / LIMIT);
+      document.getElementById("pageInfo").textContent = `第 ${page} / ${totalPages} 頁`;
+      document.getElementById("prevBtn").disabled = page <= 1;
+      document.getElementById("nextBtn").disabled = page >= totalPages;
+      show("pagination");
+    }
+
+    function layout(r) {
+      const parts = [];
+      if (r.rooms) parts.push(`${r.rooms}房`);
+      if (r.halls) parts.push(`${r.halls}廳`);
+      if (r.bathrooms) parts.push(`${r.bathrooms}衛`);
+      return parts.length ? parts.join("") : "—";
+    }
+
+    function changePage(delta) {
+      const totalPages = Math.ceil(currentTotal / LIMIT);
+      const next = currentPage + delta;
+      if (next < 1 || next > totalPages) return;
+      search(next);
+    }
+
+    function show(id) { document.getElementById(id).classList.remove("hidden"); }
+    function hide(id) { document.getElementById(id).classList.add("hidden"); }
+
+    loadOptions();
+  </script>
+</body>
+</html>

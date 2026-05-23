@@ -1,0 +1,5 @@
+*.db
+*.xlsx
+out.txt
+node_modules/
+.wrangler/
