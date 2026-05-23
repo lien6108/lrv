@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>實價登錄查詢系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: "#6366f1", 600: "#4f46e5", 700: "#4338ca" }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+    .input-field {
+      @apply w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-100
+             placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500;
+    }
+    .btn-primary {
+      @apply bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2 rounded-lg
+             text-sm transition-colors duration-150 cursor-pointer;
+    }
+    .btn-ghost {
+      @apply bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium px-4 py-2 rounded-lg
+             text-sm transition-colors duration-150 cursor-pointer;
+    }
+    th { cursor: pointer; user-select: none; }
+    th:hover { color: #a5b4fc; }
+    .sort-asc::after  { content: ' ▲'; font-size: 0.65rem; }
+    .sort-desc::after { content: ' ▼'; font-size: 0.65rem; }
+    .tag-a { @apply bg-indigo-900 text-indigo-300 text-xs px-2 py-0.5 rounded-full; }
+    .tag-b { @apply bg-purple-900 text-purple-300 text-xs px-2 py-0.5 rounded-full; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">實</div>
+      <h1 class="text-lg font-semibold text-white">實價登錄查詢系統</h1>
+    </div>
+    <div class="text-xs text-gray-500" id="last-update">載入中…</div>
+  </header>
+
+  <div class="flex h-[calc(100vh-64px)]">
+
+    <!-- Filter Panel -->
+    <aside class="w-72 bg-gray-900 border-r border-gray-800 p-5 overflow-y-auto flex-shrink-0">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">篩選條件</h2>
+
+      <div class="space-y-4">
+        <!-- 鄉鎮市區 -->
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">鄉鎮市區</label>
+          <select id="f-district" class="input-field">
+            <option value="">全部</option>
+          </select>
+        </div>
+
+        <!-- 年月 -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">民國年</label>
+            <input id="f-year" type="number" placeholder="例：112" class="input-field" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">月份</label>
+            <input id="f-month" type="number" min="1" max="12" placeholder="1–12" class="input-field" />
+          </div>
+        </div>
+
+        <!-- 社區案名 -->
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">社區案名</label>
+          <input id="f-community" type="text" placeholder="模糊搜尋" class="input-field" />
+        </div>
+
+        <!-- 建物型態 -->
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">建物型態</label>
+          <select id="f-building-type" class="input-field">
+            <option value="">全部</option>
+          </select>
+        </div>
+
+        <!-- 總價範圍 -->
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">總價範圍（元）</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="f-min-price" type="number" placeholder="最小" class="input-field" />
+            <input id="f-max-price" type="number" placeholder="最大" class="input-field" />
+          </div>
+        </div>
+
+        <!-- 單價範圍 -->
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">單價範圍（元/㎡）</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="f-min-unit" type="number" placeholder="最小" class="input-field" />
+            <input id="f-max-unit" type="number" placeholder="最大" class="input-field" />
+          </div>
+        </div>
+
+        <!-- 房衛 -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">房數</label>
+            <input id="f-bedrooms" type="number" min="0" placeholder="任意" class="input-field" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">衛數</label>
+            <input id="f-bathrooms" type="number" min="0" placeholder="任意" class="input-field" />
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-2 pt-2">
+          <button id="btn-search" class="btn-primary flex-1">查詢</button>
+          <button id="btn-clear" class="btn-ghost flex-1">清除</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- Stats Bar -->
+      <div class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+        <div class="text-sm text-gray-400">
+          共找到 <span id="total-count" class="text-white font-semibold">—</span> 筆資料
+        </div>
+        <div id="pagination-info" class="text-xs text-gray-500"></div>
+      </div>
+
+      <!-- Table -->
+      <div class="flex-1 overflow-auto px-6 py-4">
+        <div id="loading" class="hidden text-center py-12 text-gray-500 text-sm">載入中…</div>
+        <div id="empty" class="hidden text-center py-12 text-gray-500 text-sm">找不到符合條件的資料</div>
+
+        <table class="w-full text-sm border-collapse" id="result-table">
+          <thead class="sticky top-0 bg-gray-900 z-10">
+            <tr class="text-left text-xs text-gray-400 uppercase tracking-wider">
+              <th class="px-3 py-3 border-b border-gray-700">鄉鎮市區</th>
+              <th class="px-3 py-3 border-b border-gray-700" data-sort="year_month">交易年月</th>
+              <th class="px-3 py-3 border-b border-gray-700">社區案名</th>
+              <th class="px-3 py-3 border-b border-gray-700">建物型態</th>
+              <th class="px-3 py-3 border-b border-gray-700">格局</th>
+              <th class="px-3 py-3 border-b border-gray-700" data-sort="total_price">總價（萬）</th>
+              <th class="px-3 py-3 border-b border-gray-700" data-sort="unit_price">單價（元/㎡）</th>
+              <th class="px-3 py-3 border-b border-gray-700">面積（坪）</th>
+              <th class="px-3 py-3 border-b border-gray-700">來源</th>
+            </tr>
+          </thead>
+          <tbody id="result-body" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="bg-gray-900 border-t border-gray-800 px-6 py-3 flex items-center justify-between">
+        <button id="btn-prev" class="btn-ghost text-xs px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed">← 上一頁</button>
+        <div id="page-info" class="text-xs text-gray-500"></div>
+        <button id="btn-next" class="btn-ghost text-xs px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed">下一頁 →</button>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
