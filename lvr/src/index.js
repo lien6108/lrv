@@ -57,7 +57,7 @@ const DB_COLS = [
   "parking_area_ping", "main_building_area", "auxiliary_building_area", "balcony_area",
   "total_price", "total_price_10k", "unit_price_sqm", "unit_price_ping", "parking_price",
   "parking_type", "building_block", "zoning", "non_urban_zoning", "non_urban_land_use",
-  "community_name", "remarks", "transfer_id", "source_id",
+  "community_name", "remarks", "transfer_id", "source_id", "source_file",
 ];
 
 // ── CSV 解析 ──────────────────────────────────────────────
@@ -133,6 +133,7 @@ function mapRow(raw, colMap, isB) {
 
   // source_id: a 用移轉編號，b 用編號
   r.source_id = isB ? (raw["編號"] ?? null) : (r.transfer_id ?? null);
+  r.source_file = isB ? 'b' : 'a';
 
   return r;
 }
@@ -207,7 +208,117 @@ async function handleOptions$1(db) {
   return jsonResponse({
     districts: districts.results.map(r => r.district),
     building_types: buildingTypes.results.map(r => r.building_type),
+    last_import: null,
   });
+}
+
+async function handleStats(db) {
+  const total = (await db.prepare("SELECT COUNT(*) as n FROM transactions").first())?.n ?? 0;
+
+  const bySource = await db
+    .prepare("SELECT source_file, COUNT(*) as n FROM transactions WHERE source_file IS NOT NULL GROUP BY source_file")
+    .all();
+
+  const byType = await db
+    .prepare("SELECT building_type, COUNT(*) as n FROM transactions WHERE building_type IS NOT NULL GROUP BY building_type ORDER BY n DESC LIMIT 8")
+    .all();
+
+  const by_source = {};
+  for (const r of bySource.results) by_source[r.source_file] = r.n;
+
+  const by_building_type = {};
+  for (const r of byType.results) by_building_type[r.building_type] = r.n;
+
+  return jsonResponse({ total, by_source, by_building_type });
+}
+
+async function handleTransactions(db, url) {
+  const p = url.searchParams;
+  const district      = p.get("district") || "";
+  const year          = parseInt(p.get("year") || "0", 10);
+  const month         = parseInt(p.get("month") || "0", 10);
+  const community     = p.get("community") || "";
+  const buildingType  = p.get("building_type") || "";
+  const minPrice      = parseInt(p.get("min_price") || "0", 10);
+  const maxPrice      = parseInt(p.get("max_price") || "0", 10);
+  const minUnit       = parseFloat(p.get("min_unit_price") || "0");
+  const maxUnit       = parseFloat(p.get("max_unit_price") || "0");
+  const bedroomsP     = parseInt(p.get("bedrooms") ?? "-1", 10);
+  const bathroomsP    = parseInt(p.get("bathrooms") ?? "-1", 10);
+  const sortBy        = p.get("sort_by") || "year_month";
+  const sortDir       = (p.get("sort_dir") || "desc").toLowerCase() === "asc" ? "ASC" : "DESC";
+  const page          = Math.max(1, parseInt(p.get("page") || "1", 10));
+  const limit         = Math.min(100, Math.max(1, parseInt(p.get("limit") || "20", 10)));
+  const offset        = (page - 1) * limit;
+
+  const conditions = [];
+  const params = [];
+
+  if (district)      { conditions.push("district = ?");                                        params.push(district); }
+  if (year > 0)      { conditions.push("CAST(transaction_date / 10000 AS INTEGER) = ?");       params.push(year); }
+  if (month > 0)     { conditions.push("CAST((transaction_date / 100) % 100 AS INTEGER) = ?"); params.push(month); }
+  if (community)     { conditions.push("community_name LIKE ?");                                params.push(`%${community}%`); }
+  if (buildingType)  { conditions.push("building_type = ?");                                    params.push(buildingType); }
+  if (minPrice > 0)  { conditions.push("total_price >= ?");                                     params.push(minPrice); }
+  if (maxPrice > 0)  { conditions.push("total_price <= ?");                                     params.push(maxPrice); }
+  if (minUnit > 0)   { conditions.push("unit_price_sqm >= ?");                                  params.push(minUnit); }
+  if (maxUnit > 0)   { conditions.push("unit_price_sqm <= ?");                                  params.push(maxUnit); }
+  if (bedroomsP >= 0)  { conditions.push("rooms = ?");     params.push(bedroomsP); }
+  if (bathroomsP >= 0) { conditions.push("bathrooms = ?"); params.push(bathroomsP); }
+
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const sortColMap = { total_price: "total_price", unit_price: "unit_price_sqm", year_month: "transaction_date" };
+  const orderCol = sortColMap[sortBy] || "transaction_date";
+
+  const selectCols = [
+    "district AS 鄉鎮市區",
+    "section AS 區段",
+    "CASE WHEN transaction_date IS NOT NULL THEN CAST(transaction_date / 100 AS TEXT) ELSE NULL END AS 交易年月",
+    "community_name AS 社區案名",
+    "source_file AS 來源檔案",
+    "address AS 土地區段位置建物區段門牌",
+    "building_block AS 棟別",
+    "floor_transfer AS 移轉層次",
+    "total_floors AS 總樓層數",
+    "building_type AS 建物型態",
+    "main_purpose AS 主要用途",
+    "main_material AS 主要建材",
+    "CASE WHEN construction_date IS NOT NULL THEN CAST(CAST(construction_date AS INTEGER) / 100 AS TEXT) ELSE NULL END AS 建築完成年月",
+    "elevator AS 電梯",
+    "management AS 有無管理組織",
+    "rooms AS 格局_房",
+    "halls AS 格局_廳",
+    "bathrooms AS 格局_衛",
+    "partitions AS 格局_隔間",
+    "building_area_ping AS 建物移轉總面積_坪",
+    "building_area_excl_parking AS 建物移轉不含車面積_坪",
+    "main_building_area AS 主建物面積",
+    "auxiliary_building_area AS 附屬建物面積",
+    "balcony_area AS 陽台面積",
+    "land_area_ping AS 土地移轉總面積_坪",
+    "parking_area_ping AS 車位移轉總面積_坪",
+    "total_price_10k AS 總價_萬元",
+    "unit_price_sqm AS 單價_元每平方",
+    "unit_price_ping AS 建物單價_萬每坪",
+    "parking_price AS 車位總價_元",
+    "parking_type AS 車位類別",
+    "transaction_type AS 交易標的",
+    "transaction_units AS 交易筆棟數",
+    "zoning AS 使用分區編定",
+    "remarks AS 備註",
+    "transfer_id AS 移轉編號",
+  ].join(", ");
+
+  const total = (await db
+    .prepare(`SELECT COUNT(*) as n FROM transactions ${where}`)
+    .bind(...params).first())?.n ?? 0;
+
+  const rows = await db
+    .prepare(`SELECT ${selectCols} FROM transactions ${where} ORDER BY ${orderCol} ${sortDir} LIMIT ? OFFSET ?`)
+    .bind(...params, limit, offset).all();
+
+  return jsonResponse({ total, page, limit, data: rows.results });
 }
 
 async function handleSearch(db, url) {
@@ -256,6 +367,85 @@ async function handleSearch(db, url) {
   return jsonResponse({ total, page, limit, data: rows.results });
 }
 
+// ── 匯出 API ──────────────────────────────────────────────
+
+async function handleExport(db, url) {
+  const p = url.searchParams;
+  const district      = p.get("district") || "";
+  const year          = parseInt(p.get("year") || "0", 10);
+  const month         = parseInt(p.get("month") || "0", 10);
+  const community     = p.get("community") || "";
+  const buildingType  = p.get("building_type") || "";
+  const minPrice      = parseInt(p.get("min_price") || "0", 10);
+  const maxPrice      = parseInt(p.get("max_price") || "0", 10);
+  const minUnit       = parseFloat(p.get("min_unit_price") || "0");
+  const maxUnit       = parseFloat(p.get("max_unit_price") || "0");
+  const bedroomsP     = parseInt(p.get("bedrooms") ?? "-1", 10);
+  const bathroomsP    = parseInt(p.get("bathrooms") ?? "-1", 10);
+  const sortBy        = p.get("sort_by") || "year_month";
+  const sortDir       = (p.get("sort_dir") || "desc").toLowerCase() === "asc" ? "ASC" : "DESC";
+
+  const conditions = [];
+  const params = [];
+
+  if (district)      { conditions.push("district = ?");                                        params.push(district); }
+  if (year > 0)      { conditions.push("CAST(transaction_date / 10000 AS INTEGER) = ?");       params.push(year); }
+  if (month > 0)     { conditions.push("CAST((transaction_date / 100) % 100 AS INTEGER) = ?"); params.push(month); }
+  if (community)     { conditions.push("community_name LIKE ?");                                params.push(`%${community}%`); }
+  if (buildingType)  { conditions.push("building_type = ?");                                    params.push(buildingType); }
+  if (minPrice > 0)  { conditions.push("total_price >= ?");                                     params.push(minPrice); }
+  if (maxPrice > 0)  { conditions.push("total_price <= ?");                                     params.push(maxPrice); }
+  if (minUnit > 0)   { conditions.push("unit_price_sqm >= ?");                                  params.push(minUnit); }
+  if (maxUnit > 0)   { conditions.push("unit_price_sqm <= ?");                                  params.push(maxUnit); }
+  if (bedroomsP >= 0)  { conditions.push("rooms = ?");     params.push(bedroomsP); }
+  if (bathroomsP >= 0) { conditions.push("bathrooms = ?"); params.push(bathroomsP); }
+
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const sortColMap = { total_price: "total_price", unit_price: "unit_price_sqm", year_month: "transaction_date" };
+  const orderCol = sortColMap[sortBy] || "transaction_date";
+
+  const selectCols = [
+    "district AS 鄉鎮市區",
+    "CASE WHEN transaction_date IS NOT NULL THEN CAST(transaction_date / 100 AS TEXT) ELSE NULL END AS 交易年月",
+    "community_name AS 社區案名",
+    "source_file AS 來源檔案",
+    "address AS 土地區段位置建物區段門牌",
+    "building_block AS 棟別",
+    "floor_transfer AS 移轉層次",
+    "total_floors AS 總樓層數",
+    "building_type AS 建物型態",
+    "main_purpose AS 主要用途",
+    "main_material AS 主要建材",
+    "CASE WHEN construction_date IS NOT NULL THEN CAST(CAST(construction_date AS INTEGER) / 100 AS TEXT) ELSE NULL END AS 建築完成年月",
+    "elevator AS 電梯",
+    "management AS 有無管理組織",
+    "rooms AS 格局_房",
+    "halls AS 格局_廳",
+    "bathrooms AS 格局_衛",
+    "building_area_ping AS 建物移轉總面積_坪",
+    "building_area_excl_parking AS 建物移轉不含車面積_坪",
+    "land_area_ping AS 土地移轉總面積_坪",
+    "total_price_10k AS 總價_萬元",
+    "unit_price_sqm AS 單價_元每平方",
+    "unit_price_ping AS 建物單價_萬每坪",
+    "parking_price AS 車位總價_元",
+    "parking_type AS 車位類別",
+    "transaction_type AS 交易標的",
+    "remarks AS 備註",
+    "transfer_id AS 移轉編號",
+  ].join(", ");
+
+  const total = (await db
+    .prepare(`SELECT COUNT(*) as n FROM transactions ${where}`)
+    .bind(...params).first())?.n ?? 0;
+
+  const rows = await db
+    .prepare(`SELECT ${selectCols} FROM transactions ${where} ORDER BY ${orderCol} ${sortDir} LIMIT 100000`)
+    .bind(...params).all();
+
+  return jsonResponse({ total, data: rows.results });
+}
+
 // ── 主 export ─────────────────────────────────────────────
 
 export default {
@@ -263,8 +453,11 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
-    if (url.pathname === "/api/options") return handleOptions$1(env.DB);
-    if (url.pathname === "/api/search")  return handleSearch(env.DB, url);
+    if (url.pathname === "/api/options")      return handleOptions$1(env.DB);
+    if (url.pathname === "/api/stats")        return handleStats(env.DB);
+    if (url.pathname === "/api/transactions") return handleTransactions(env.DB, url);
+    if (url.pathname === "/api/export")       return handleExport(env.DB, url);
+    if (url.pathname === "/api/search")       return handleSearch(env.DB, url);
     // 手動觸發更新（測試用）
     if (url.pathname === "/api/update") {
       const log = await fetchAndUpdate(env.DB);
