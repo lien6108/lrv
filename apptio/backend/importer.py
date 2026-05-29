@@ -135,6 +135,10 @@ def import_billing(db_path: str, folder_path: str, billing_year_month: str) -> N
                 continue
             wb = openpyxl.load_workbook(xlsx_path, data_only=True)
 
+            has_billing_sheet = any(s in wb.sheetnames for s in _BILLING_SHEETS)
+            if not has_billing_sheet:
+                continue
+
             for sheet_name in _BILLING_SHEETS:
                 if sheet_name not in wb.sheetnames:
                     continue
@@ -143,7 +147,9 @@ def import_billing(db_path: str, folder_path: str, billing_year_month: str) -> N
 
             if summary_data is None:
                 ws0 = wb[wb.sheetnames[0]]
-                summary_data = _read_summary(ws0)
+                candidate = _read_summary(ws0)
+                if any(v is not None for v in candidate):
+                    summary_data = candidate
 
         _insert_line_items(conn, all_line_items)
 
