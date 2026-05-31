@@ -149,6 +149,7 @@
     .dark .studio-lbl-on  { color: #e5e7eb; }
     .dark .studio-lbl-off { color: #6b7280; }
   </style>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 h-screen flex flex-col overflow-hidden">
 
@@ -293,6 +294,28 @@
       </div>
       <div class="flex items-center gap-3">
         <div id="pagination-info" class="text-xs text-gray-400 dark:text-gray-500"></div>
+        <!-- Export dropdown -->
+        <div class="relative" id="export-dropdown-container">
+          <button id="btn-export"
+            class="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            匯出 ▾
+          </button>
+          <div id="export-menu"
+            class="hidden absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 py-1">
+            <button onclick="exportData('csv')"
+              class="w-full text-left px-4 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+              匯出 CSV
+            </button>
+            <button onclick="exportData('xlsx')"
+              class="w-full text-left px-4 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+              匯出 XLSX
+            </button>
+          </div>
+        </div>
         <button id="btn-studio" class="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />

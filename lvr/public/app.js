@@ -90,6 +90,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btn-studio").addEventListener("click", openStudio);
   document.getElementById("studio-overlay").addEventListener("click", closeStudio);
 
+  document.getElementById("btn-export").addEventListener("click", e => {
+    e.stopPropagation();
+    document.getElementById("export-menu").classList.toggle("hidden");
+  });
+  document.addEventListener("click", () => {
+    document.getElementById("export-menu").classList.add("hidden");
+  });
+
   document.querySelectorAll("input").forEach(el => {
     el.addEventListener("keydown", e => { if (e.key === "Enter") { state.page = 1; search(); } });
   });
@@ -204,6 +212,7 @@ async function search() {
     state.total = data.total;
     renderTable(data.data);
     renderPagination();
+    document.getElementById("btn-export").disabled = state.total === 0;
   } catch (e) {
     console.error("Search failed", e);
   } finally {
@@ -290,6 +299,87 @@ function selectAllColumns() {
   buildHeader();
   if (state.lastRows.length) renderTable(state.lastRows);
   renderStudioGroups();
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+async function exportData(format) {
+  document.getElementById("export-menu").classList.add("hidden");
+
+  if (state.total > 50000) {
+    if (!confirm(`共 ${state.total.toLocaleString()} 筆，資料量較大，確定匯出？`)) return;
+  }
+
+  const btn = document.getElementById("btn-export");
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = "匯出中…";
+
+  try {
+    const params = new URLSearchParams();
+    const add = (id, key) => {
+      const val = document.getElementById(id)?.value?.trim();
+      if (val) params.set(key, val);
+    };
+
+    add("f-district", "district");
+    add("f-year-from", "year_from");
+    add("f-month-from", "month_from");
+    add("f-year-to", "year_to");
+    add("f-month-to", "month_to");
+    add("f-community", "community");
+    add("f-building-type", "building_type");
+
+    const minP = document.getElementById("f-min-price")?.value?.trim();
+    const maxP = document.getElementById("f-max-price")?.value?.trim();
+    if (minP) params.set("min_price", parseInt(minP, 10) * 10000);
+    if (maxP) params.set("max_price", parseInt(maxP, 10) * 10000);
+
+    add("f-min-unit", "min_unit_price");
+    add("f-max-unit", "max_unit_price");
+    add("f-bedrooms", "bedrooms");
+    add("f-bathrooms", "bathrooms");
+
+    params.set("sort_by", state.sortBy);
+    params.set("sort_dir", state.sortDir);
+
+    const res = await fetch(`/api/export?${params}`);
+    if (!res.ok) throw new Error("fetch failed");
+    const { data } = await res.json();
+
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const filename = `實價登錄_${dateStr}`;
+
+    if (format === "csv") {
+      const headers = Object.keys(data[0] || {});
+      const escape = v => {
+        const s = v == null ? "" : String(v);
+        return s.includes(",") || s.includes('"') || s.includes("\n")
+          ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const rows = [headers.join(","), ...data.map(r => headers.map(h => escape(r[h])).join(","))];
+      const blob = new Blob(["﻿" + rows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      triggerDownload(blob, `${filename}.csv`);
+    } else {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "實價登錄");
+      XLSX.writeFile(wb, `${filename}.xlsx`);
+    }
+  } catch (_) {
+    alert("匯出失敗，請稍後再試");
+  } finally {
+    btn.disabled = state.total === 0;
+    btn.innerHTML = originalHTML;
+  }
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
