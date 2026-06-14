@@ -5,17 +5,24 @@
 }
 
 :root {
-  --color-bg: #111827;
-  --color-bg-secondary: #0f172a;
-  --color-bg-card: #1e293b;
-  --color-bg-hover: #263348;
-  --color-border: #1e293b;
-  --color-border-strong: #2d3748;
-  --color-accent: #e63946;
-  --color-accent-dim: rgba(230, 57, 70, 0.15);
-  --color-text: #f1f5f9;
-  --color-text-muted: #94a3b8;
-  --color-text-dim: #64748b;
+  /* === ALIEN: NEMESIS — Xenomorph Palette ========================
+     Background tones: organic void black (warm, not cold blue-slate)
+     Accent: bio-luminescent acid green (xenomorph acid blood / Giger)
+     Warning: amber phosphor (MOTHER terminal / ship alert systems)
+  ================================================================ */
+  --color-bg: #080c08;
+  --color-bg-secondary: #050705;
+  --color-bg-card: #0e160e;
+  --color-bg-hover: #162316;
+  --color-border: #1a281a;
+  --color-border-strong: #253d25;
+  --color-accent: #8fd44a;
+  --color-accent-dim: rgba(143, 212, 74, 0.11);
+  --color-accent-glow: rgba(143, 212, 74, 0.32);
+  --color-warning: #d4890a;
+  --color-text: #dff0d0;
+  --color-text-muted: #7aaa65;
+  --color-text-dim: #3e5e34;
   --sidebar-width: 210px;
 }
 
@@ -26,6 +33,22 @@ html, body {
   font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
   font-size: 15px;
   line-height: 1.6;
+}
+
+/* CRT scanline overlay — very subtle, adds organic "screen" texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 6, 0, 0.06) 3px,
+    rgba(0, 6, 0, 0.06) 4px
+  );
 }
 
 #app {
@@ -64,14 +87,17 @@ button {
 .prose h1 {
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: 0.3px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
   margin-bottom: 6px;
   color: var(--color-text);
+  text-shadow: 0 0 24px var(--color-accent-glow);
 }
 
 .prose h2 {
   font-size: 16px;
   font-weight: 600;
+  letter-spacing: 0.5px;
   color: var(--color-text);
   margin-top: 36px;
   margin-bottom: 12px;
@@ -85,7 +111,8 @@ button {
   color: var(--color-accent);
   margin-top: 22px;
   margin-bottom: 8px;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 8px var(--color-accent-glow);
 }
 
 .prose p {
@@ -133,6 +160,7 @@ button {
   color: var(--color-text-muted);
   font-size: 14px;
   line-height: 1.6;
+  box-shadow: inset 0 0 16px rgba(143, 212, 74, 0.04);
 }
 
 .prose blockquote strong {
@@ -162,6 +190,7 @@ button {
   text-align: left;
   border: 1px solid var(--color-border-strong);
   white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 .prose td {
@@ -172,7 +201,16 @@ button {
 }
 
 .prose tr:nth-child(even) td {
-  background: rgba(30, 41, 59, 0.4);
+  background: rgba(14, 22, 14, 0.6);
+}
+
+.prose .token-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-right: 5px;
+  display: inline-block;
+  opacity: 0.9;
 }
 
 .prose code {
@@ -182,4 +220,5 @@ button {
   border-radius: 4px;
   font-size: 13px;
   font-family: ui-monospace, monospace;
+  text-shadow: 0 0 6px var(--color-accent-glow);
 }
