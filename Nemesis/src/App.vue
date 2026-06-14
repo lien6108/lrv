@@ -1,34 +1,40 @@
 <template>
   <div class="app-layout">
-    <!-- Mobile hamburger -->
-    <button
-      class="mobile-menu-btn"
-      :aria-label="sidebarOpen ? '關閉選單' : '開啟選單'"
-      @click="sidebarOpen = !sidebarOpen"
-    >
-      <AppIcon :name="sidebarOpen ? 'x' : 'menu'" :size="20" />
-    </button>
+    <template v-if="!isGuideMode">
+      <!-- Mobile hamburger -->
+      <button
+        class="mobile-menu-btn"
+        :aria-label="sidebarOpen ? '關閉選單' : '開啟選單'"
+        @click="sidebarOpen = !sidebarOpen"
+      >
+        <AppIcon :name="sidebarOpen ? 'x' : 'menu'" :size="20" />
+      </button>
 
-    <!-- Mobile overlay backdrop -->
-    <Transition name="fade">
-      <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen = false" />
-    </Transition>
+      <!-- Mobile overlay backdrop -->
+      <Transition name="fade">
+        <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen = false" />
+      </Transition>
 
-    <AppSidebar :is-open="sidebarOpen" @close="sidebarOpen = false" />
+      <AppSidebar :is-open="sidebarOpen" @close="sidebarOpen = false" />
+    </template>
 
-    <main class="main-content">
+    <main class="main-content" :class="{ 'main-content--guide': isGuideMode }">
       <RouterView />
     </main>
 
-    <SituationModal />
+    <SituationModal v-if="!isGuideMode" />
   </div>
 </template>
 
 <script setup>
-import { ref, provide } from 'vue'
+import { ref, computed, provide } from 'vue'
+import { useRoute } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
 import SituationModal from './components/SituationModal.vue'
 import AppIcon from './components/AppIcon.vue'
+
+const route = useRoute()
+const isGuideMode = computed(() => route.path.startsWith('/guide/'))
 
 const situationModalOpen = ref(false)
 provide('openSituationModal', () => { situationModalOpen.value = true })
@@ -50,6 +56,11 @@ const sidebarOpen = ref(false)
   overflow-y: auto;
   padding: 32px 40px;
   min-width: 0;
+}
+
+.main-content--guide {
+  padding: 0;
+  overflow: hidden;
 }
 
 /* Mobile menu toggle — hidden on desktop */
@@ -104,6 +115,10 @@ const sidebarOpen = ref(false)
 
   .main-content {
     padding: 64px 20px 100px;
+  }
+
+  .main-content--guide {
+    padding: 0;
   }
 }
 </style>

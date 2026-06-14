@@ -1,0 +1,38 @@
+{
+  "title": "玩家回合",
+  "icon": "user",
+  "order": 2,
+  "steps": [
+    {
+      "id": "player-draw",
+      "type": "action",
+      "title": "所有玩家抽取行動卡牌",
+      "body": "每位玩家從自己的行動牌庫抽牌，直到手牌達到 5 張。若牌庫空了，先洗勻棄牌堆成新牌庫，再繼續抽牌。"
+    },
+    {
+      "id": "player-pass-marker",
+      "type": "action",
+      "title": "傳遞起始玩家標記",
+      "body": "將起始玩家標記傳給左手邊的玩家。注意：遊戲第一輪不傳遞起始玩家標記。"
+    },
+    {
+      "id": "player-action",
+      "type": "check",
+      "per_player": true,
+      "title": "玩家執行行動",
+      "body": "從起始玩家開始，順時針依序執行 2 個行動。可執行：移動、輕聲移動、射擊、近戰、抬起重物、交易、製作物品，以及行動卡牌、物品卡牌、房間行動。完成 2 個行動後結束本回合。",
+      "situations": [
+        { "id": "encounter-alien" },
+        { "id": "fire" },
+        { "id": "contamination" },
+        { "id": "malfunction" }
+      ]
+    },
+    {
+      "id": "player-skip-check",
+      "type": "action",
+      "title": "確認是否所有玩家都跳過",
+      "body": "當所有玩家都選擇跳過本輪行動時，玩家階段結束，進入事件階段。跳過時可棄任意數量手牌，並將幫助卡牌翻至「跳過」面。跳過後本階段不能再執行任何行動。"
+    }
+  ]
+}

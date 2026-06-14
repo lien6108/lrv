@@ -9,8 +9,12 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/guide/:phase',
+      component: () => import('../views/GuideView.vue'),
+    },
+    {
       path: '/phase/:id',
-      component: () => import('../views/PhaseView.vue'),
+      redirect: to => `/guide/${to.params.id}`,
     },
     {
       path: '/situation/:id',

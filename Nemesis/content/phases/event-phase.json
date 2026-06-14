@@ -1,0 +1,58 @@
+{
+  "title": "事件階段",
+  "icon": "layers",
+  "order": 3,
+  "steps": [
+    {
+      "id": "event-time",
+      "type": "check",
+      "title": "推進時間軸",
+      "body": "將時間軸上的時間標誌向右移動 1 格。若自毀序列已啟動，同時將自毀軸上的標誌也向右移動 1 格。時間標誌到達最後紅色區格時，飛船立刻超空間躍遷，遊戲結束。",
+      "situations": []
+    },
+    {
+      "id": "event-intruder-attack",
+      "type": "check",
+      "title": "入侵者攻擊",
+      "body": "所有正在與角色戰鬥的入侵者發動攻擊。選擇手牌行動卡牌最少的玩家為目標（平手時選起始玩家標記持有者）。抽 1 張入侵者攻擊卡牌，符號一致才結算效果。幼蟲改為「寄生」攻擊。",
+      "situations": [
+        { "id": "encounter-alien" }
+      ]
+    },
+    {
+      "id": "event-fire-damage",
+      "type": "check",
+      "title": "火焰傷害",
+      "body": "確認版圖上每個有火焰標誌的房間。所有位於著火房間的入侵者受到 1 點傷害。",
+      "situations": [
+        { "id": "fire" }
+      ]
+    },
+    {
+      "id": "event-card",
+      "type": "check",
+      "title": "結算事件卡牌",
+      "body": "抽取並結算 1 張事件卡牌：① 依卡牌符號移動不在戰鬥中的入侵者（進入檢修通道的入侵者消失）；② 結算卡牌文字效果後棄牌。事件牌庫用完時，洗勻棄牌堆成新牌庫。",
+      "situations": [
+        { "id": "encounter-alien" },
+        { "id": "fire" },
+        { "id": "malfunction" }
+      ]
+    },
+    {
+      "id": "event-bag",
+      "type": "check",
+      "title": "入侵者布袋增殖",
+      "body": "從布袋抽 1 個入侵者標記並結算：幼蟲→換成蟲放回袋；爬蟲→換飼蟲放回袋；成蟲→非戰鬥玩家噪聲擲骰；飼蟲→所有玩家噪聲擲骰；蟲后→巢穴有角色則遭遇，否則加蟲卵；空白→加1成蟲至袋。",
+      "situations": [
+        { "id": "encounter-alien" }
+      ]
+    },
+    {
+      "id": "event-end",
+      "type": "action",
+      "title": "本輪結束",
+      "body": "以上步驟全部完成後，一輪結束。回到玩家階段，所有玩家重新抽牌至 5 張，開始下一輪。"
+    }
+  ]
+}
