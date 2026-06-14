@@ -19,7 +19,7 @@
       "id": "player-action",
       "type": "action-select",
       "per_player": true,
-      "action_count": 2,
+      "action_points": 2,
       "title": "玩家執行行動",
       "situations": [
         { "id": "encounter-alien" },
@@ -37,6 +37,7 @@
         },
         {
           "id": "quiet-move",
+          "cost": 2,
           "label": "輕聲移動",
           "icon": "footprints",
           "type": "card",

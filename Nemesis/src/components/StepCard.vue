@@ -1,6 +1,7 @@
 <template>
   <ActionSelectCard
     v-if="step.type === 'action-select'"
+    :key="context.current_player"
     :step="step"
     :context="context"
     :is-last="isLast"

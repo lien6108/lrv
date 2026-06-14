@@ -118,6 +118,7 @@ function handleNext() {
     context.current_player++
     return
   }
+  if (step?.per_player) context.current_player = 1
   if (isLast.value) {
     completed.value = true
   } else {

@@ -1,15 +1,44 @@
 <template>
   <div class="guide-card">
 
+    <!-- ── HANDOFF VIEW ── -->
+    <template v-if="view === 'handoff'">
+      <div class="guide-card__header">
+        <button class="exit-btn" @click="$emit('exit')">✕ 離開</button>
+        <span v-if="context.player_count" class="player-badge">
+          玩家 {{ context.current_player }} / {{ context.player_count }}
+        </span>
+      </div>
+
+      <div class="guide-card__body handoff-body">
+        <p class="handoff-label">玩家 {{ context.current_player }}，換你了</p>
+        <p v-if="playersRemaining > 0" class="handoff-sub">
+          完成後還有 {{ playersRemaining }} 位玩家待行動
+        </p>
+      </div>
+
+      <div class="guide-card__footer">
+        <span></span>
+        <button class="next-btn" @click="view = 'select'">開始行動 →</button>
+      </div>
+    </template>
+
     <!-- ── SELECT VIEW ── -->
-    <template v-if="view === 'select'">
+    <template v-else-if="view === 'select'">
       <div class="guide-card__header">
         <button class="exit-btn" @click="$emit('exit')">✕ 離開</button>
         <div class="header-right">
           <span v-if="context.player_count" class="player-badge">
             玩家 {{ context.current_player }} / {{ context.player_count }}
           </span>
-          <span class="step-counter">第 {{ actionsDone + 1 }} 個行動，共 {{ step.action_count }} 個</span>
+          <span class="ap-pips">
+            <span
+              v-for="i in step.action_points"
+              :key="i"
+              class="ap-pip"
+              :class="{ 'ap-pip--empty': i > apRemaining }"
+            ></span>
+          </span>
         </div>
       </div>
 
@@ -53,7 +82,14 @@
           <span v-if="context.player_count" class="player-badge">
             玩家 {{ context.current_player }} / {{ context.player_count }}
           </span>
-          <span class="step-counter">第 {{ actionsDone + 1 }} 個行動，共 {{ step.action_count }} 個</span>
+          <span class="ap-pips">
+            <span
+              v-for="i in step.action_points"
+              :key="i"
+              class="ap-pip"
+              :class="{ 'ap-pip--empty': i > apRemaining }"
+            ></span>
+          </span>
         </div>
       </div>
 
@@ -75,6 +111,14 @@
         <div class="header-right">
           <span v-if="context.player_count" class="player-badge">
             玩家 {{ context.current_player }} / {{ context.player_count }}
+          </span>
+          <span class="ap-pips">
+            <span
+              v-for="i in step.action_points"
+              :key="i"
+              class="ap-pip"
+              :class="{ 'ap-pip--empty': i > apRemaining }"
+            ></span>
           </span>
           <span class="step-counter">{{ selectedAction.label }}｜步驟 {{ subStepIndex + 1 }} / {{ selectedAction.steps.length }}</span>
         </div>
@@ -118,13 +162,17 @@ const SITUATION_LABELS = {
   'escape-pod': '逃脫艙啟動',
 }
 
-const view = ref('select')
+const view = ref(props.context.current_player > 1 ? 'handoff' : 'select')
 const selectedAction = ref(null)
-const actionsDone = ref(0)
+const apRemaining = ref(props.step.action_points)
 const subStepIndex = ref(0)
 
 const isLastSubStep = computed(() =>
   selectedAction.value && subStepIndex.value === selectedAction.value.steps.length - 1
+)
+
+const playersRemaining = computed(
+  () => (props.context.player_count ?? 1) - props.context.current_player
 )
 
 function selectAction(action) {
@@ -156,8 +204,8 @@ function stepForward() {
 }
 
 function completeAction() {
-  actionsDone.value++
-  if (actionsDone.value >= props.step.action_count) {
+  apRemaining.value -= selectedAction.value.cost ?? 1
+  if (apRemaining.value <= 0) {
     emit('next')
   } else {
     view.value = 'select'
@@ -245,6 +293,44 @@ function completeAction() {
   font-size: 16px;
   color: var(--color-text-muted);
   line-height: 1.8;
+}
+
+/* AP pips */
+.ap-pips {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ap-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  transition: background 0.2s;
+}
+
+.ap-pip--empty {
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+}
+
+/* Handoff */
+.handoff-body {
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.handoff-label {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.handoff-sub {
+  font-size: 14px;
+  color: var(--color-text-dim);
 }
 
 /* Action grid */
