@@ -4,7 +4,8 @@ export function useGuideSession(stepsInput) {
   const stepsRef = isRef(stepsInput) ? stepsInput : ref(stepsInput)
 
   const stepIndex = ref(0)
-  const context = reactive({ player_count: null, current_player: 1 })
+  const savedCount = sessionStorage.getItem('nemesis_player_count')
+  const context = reactive({ player_count: savedCount ? Number(savedCount) : null, current_player: 1 })
   const overlayOpen = ref(false)
   const activeSituation = ref(null)
 
@@ -21,6 +22,7 @@ export function useGuideSession(stepsInput) {
 
   function collectValue(key, val) {
     context[key] = val
+    if (key === 'player_count') sessionStorage.setItem('nemesis_player_count', val)
     if (!isLast.value) stepIndex.value++
   }
 
