@@ -235,8 +235,10 @@ async function handleStats(db) {
 async function handleTransactions(db, url) {
   const p = url.searchParams;
   const district      = p.get("district") || "";
-  const year          = parseInt(p.get("year") || "0", 10);
-  const month         = parseInt(p.get("month") || "0", 10);
+  const yearFrom      = parseInt(p.get("year_from")  || "0", 10);
+  const monthFrom     = parseInt(p.get("month_from") || "0", 10);
+  const yearTo        = parseInt(p.get("year_to")    || "0", 10);
+  const monthTo       = parseInt(p.get("month_to")   || "0", 10);
   const community     = p.get("community") || "";
   const buildingType  = p.get("building_type") || "";
   const minPrice      = parseInt(p.get("min_price") || "0", 10);
@@ -254,15 +256,23 @@ async function handleTransactions(db, url) {
   const conditions = [];
   const params = [];
 
-  if (district)      { conditions.push("district = ?");                                        params.push(district); }
-  if (year > 0)      { conditions.push("CAST(transaction_date / 10000 AS INTEGER) = ?");       params.push(year); }
-  if (month > 0)     { conditions.push("CAST((transaction_date / 100) % 100 AS INTEGER) = ?"); params.push(month); }
-  if (community)     { conditions.push("community_name LIKE ?");                                params.push(`%${community}%`); }
-  if (buildingType)  { conditions.push("building_type = ?");                                    params.push(buildingType); }
-  if (minPrice > 0)  { conditions.push("total_price >= ?");                                     params.push(minPrice); }
-  if (maxPrice > 0)  { conditions.push("total_price <= ?");                                     params.push(maxPrice); }
-  if (minUnit > 0)   { conditions.push("unit_price_sqm >= ?");                                  params.push(minUnit); }
-  if (maxUnit > 0)   { conditions.push("unit_price_sqm <= ?");                                  params.push(maxUnit); }
+  if (district)     { conditions.push("district = ?");           params.push(district); }
+  if (yearFrom > 0) {
+    const from = yearFrom * 100 + (monthFrom > 0 ? monthFrom : 1);
+    conditions.push("CAST(transaction_date / 100 AS INTEGER) >= ?");
+    params.push(from);
+  }
+  if (yearTo > 0) {
+    const to = yearTo * 100 + (monthTo > 0 ? monthTo : 12);
+    conditions.push("CAST(transaction_date / 100 AS INTEGER) <= ?");
+    params.push(to);
+  }
+  if (community)     { conditions.push("community_name LIKE ?");  params.push(`%${community}%`); }
+  if (buildingType)  { conditions.push("building_type = ?");      params.push(buildingType); }
+  if (minPrice > 0)  { conditions.push("total_price >= ?");       params.push(minPrice); }
+  if (maxPrice > 0)  { conditions.push("total_price <= ?");       params.push(maxPrice); }
+  if (minUnit > 0)   { conditions.push("unit_price_sqm >= ?");    params.push(minUnit); }
+  if (maxUnit > 0)   { conditions.push("unit_price_sqm <= ?");    params.push(maxUnit); }
   if (bedroomsP >= 0)  { conditions.push("rooms = ?");     params.push(bedroomsP); }
   if (bathroomsP >= 0) { conditions.push("bathrooms = ?"); params.push(bathroomsP); }
 
@@ -372,8 +382,10 @@ async function handleSearch(db, url) {
 async function handleExport(db, url) {
   const p = url.searchParams;
   const district      = p.get("district") || "";
-  const year          = parseInt(p.get("year") || "0", 10);
-  const month         = parseInt(p.get("month") || "0", 10);
+  const yearFrom      = parseInt(p.get("year_from")  || "0", 10);
+  const monthFrom     = parseInt(p.get("month_from") || "0", 10);
+  const yearTo        = parseInt(p.get("year_to")    || "0", 10);
+  const monthTo       = parseInt(p.get("month_to")   || "0", 10);
   const community     = p.get("community") || "";
   const buildingType  = p.get("building_type") || "";
   const minPrice      = parseInt(p.get("min_price") || "0", 10);
@@ -388,15 +400,23 @@ async function handleExport(db, url) {
   const conditions = [];
   const params = [];
 
-  if (district)      { conditions.push("district = ?");                                        params.push(district); }
-  if (year > 0)      { conditions.push("CAST(transaction_date / 10000 AS INTEGER) = ?");       params.push(year); }
-  if (month > 0)     { conditions.push("CAST((transaction_date / 100) % 100 AS INTEGER) = ?"); params.push(month); }
-  if (community)     { conditions.push("community_name LIKE ?");                                params.push(`%${community}%`); }
-  if (buildingType)  { conditions.push("building_type = ?");                                    params.push(buildingType); }
-  if (minPrice > 0)  { conditions.push("total_price >= ?");                                     params.push(minPrice); }
-  if (maxPrice > 0)  { conditions.push("total_price <= ?");                                     params.push(maxPrice); }
-  if (minUnit > 0)   { conditions.push("unit_price_sqm >= ?");                                  params.push(minUnit); }
-  if (maxUnit > 0)   { conditions.push("unit_price_sqm <= ?");                                  params.push(maxUnit); }
+  if (district)     { conditions.push("district = ?");           params.push(district); }
+  if (yearFrom > 0) {
+    const from = yearFrom * 100 + (monthFrom > 0 ? monthFrom : 1);
+    conditions.push("CAST(transaction_date / 100 AS INTEGER) >= ?");
+    params.push(from);
+  }
+  if (yearTo > 0) {
+    const to = yearTo * 100 + (monthTo > 0 ? monthTo : 12);
+    conditions.push("CAST(transaction_date / 100 AS INTEGER) <= ?");
+    params.push(to);
+  }
+  if (community)     { conditions.push("community_name LIKE ?");  params.push(`%${community}%`); }
+  if (buildingType)  { conditions.push("building_type = ?");      params.push(buildingType); }
+  if (minPrice > 0)  { conditions.push("total_price >= ?");       params.push(minPrice); }
+  if (maxPrice > 0)  { conditions.push("total_price <= ?");       params.push(maxPrice); }
+  if (minUnit > 0)   { conditions.push("unit_price_sqm >= ?");    params.push(minUnit); }
+  if (maxUnit > 0)   { conditions.push("unit_price_sqm <= ?");    params.push(maxUnit); }
   if (bedroomsP >= 0)  { conditions.push("rooms = ?");     params.push(bedroomsP); }
   if (bathroomsP >= 0) { conditions.push("bathrooms = ?"); params.push(bathroomsP); }
 
@@ -446,10 +466,79 @@ async function handleExport(db, url) {
   return jsonResponse({ total, data: rows.results });
 }
 
+// ── 寄信通知 ──────────────────────────────────────────────
+
+async function sendNotification(env, log, total) {
+  if (!env.RESEND_API_KEY) return;
+
+  const now = new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" });
+  const totalInserted = log.reduce((s, r) => s + (r.inserted ?? 0), 0);
+
+  const rows = log.map(r => {
+    const label = r.url.includes("_a.csv") ? "A 類（買賣成交）" : "B 類（預售屋）";
+    if (r.error) {
+      return `<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${label}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#dc2626;font-weight:bold;">✘ 失敗</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${r.error}</td>
+      </tr>`;
+    }
+    return `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${label}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#16a34a;font-weight:bold;">✔ 成功</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">新增 <strong>${r.inserted}</strong> 筆</td>
+    </tr>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f9fafb;padding:32px;">
+  <div style="max-width:560px;margin:auto;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;">
+    <div style="background:#1d4ed8;padding:20px 24px;">
+      <h2 style="color:#fff;margin:0;font-size:18px;">🏠 實價登錄資料更新通知</h2>
+    </div>
+    <div style="padding:24px;">
+      <p style="margin-top:0;color:#374151;">實價登錄系統已完成最新一期資料同步，摘要如下：</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e5e7eb;">來源</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e5e7eb;">狀態</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e5e7eb;">結果</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p style="margin-bottom:0;color:#6b7280;font-size:13px;">
+        本次共新增 <strong>${totalInserted}</strong> 筆交易記錄。<br>
+        資料庫目前總筆數：<strong>${total.toLocaleString()}</strong> 筆。<br>
+        觸發方式：排程自動觸發 ／ 時間：${now}
+      </p>
+    </div>
+    <div style="background:#f3f4f6;padding:12px 24px;font-size:12px;color:#9ca3af;">
+      此信件由實價登錄查詢系統自動發送，請勿直接回覆。
+    </div>
+  </div>
+</body></html>`;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "onboarding@resend.dev",
+      to: ["u107029033@gap.kmu.edu.tw"],
+      subject: `【實價登錄】資料更新完成，本次新增 ${totalInserted} 筆`,
+      html,
+    }),
+  });
+}
+
 // ── 主 export ─────────────────────────────────────────────
 
 export default {
-  // HTTP requests
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -458,16 +547,21 @@ export default {
     if (url.pathname === "/api/transactions") return handleTransactions(env.DB, url);
     if (url.pathname === "/api/export")       return handleExport(env.DB, url);
     if (url.pathname === "/api/search")       return handleSearch(env.DB, url);
-    // 手動觸發更新（測試用）
     if (url.pathname === "/api/update") {
       const log = await fetchAndUpdate(env.DB);
+      const total = (await env.DB.prepare("SELECT COUNT(*) as n FROM transactions").first())?.n ?? 0;
+      await sendNotification(env, log, total);
       return jsonResponse({ ok: true, log });
     }
     return new Response("Not Found", { status: 404 });
   },
 
-  // Cron: 每月 5/15/25 日 02:00 UTC
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(fetchAndUpdate(env.DB));
+  // Cron: 每月 1/11/21 日 02:00 UTC（台灣時間 10:00）
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil((async () => {
+      const log = await fetchAndUpdate(env.DB);
+      const total = (await env.DB.prepare("SELECT COUNT(*) as n FROM transactions").first())?.n ?? 0;
+      await sendNotification(env, log, total);
+    })());
   },
 };

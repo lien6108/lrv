@@ -5,9 +5,12 @@ from pathlib import Path
 
 import pandas as pd
 import requests
+import urllib3
 from sqlalchemy.orm import Session
 
 from models import Transaction
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -19,55 +22,54 @@ DOWNLOAD_URLS = {
     "b": "https://plvr.land.moi.gov.tw//Download?fileName=e_lvr_land_b.xls",
 }
 
-# 原始欄位名稱 → model 欄位名稱
+# Excel 原始欄位名稱 → Transaction model 欄位名稱
 COLUMN_MAP = {
-    "鄉鎮市區": "鄉鎮市區",
-    "區段": "區段",
-    "交易標的": "交易標的",
-    "土地區段位置建物區段門牌": "土地區段位置建物區段門牌",
-    "土地移轉總面積(㎡)": "土地移轉總面積_平方",
-    "使用分區編定": "使用分區編定",
-    "非都市地使用分區": "非都市地使用分區",
-    "非都市土地使用地": "非都市土地使用地",
-    "交易年月": "交易年月",
-    "交易筆棟數": "交易筆棟數",
-    "移轉層次": "移轉層次",
-    "總樓層數": "總樓層數",
-    "建物型態": "建物型態",
-    "主要用途": "主要用途",
-    "主要建材": "主要建材",
-    "建築完成年月": "建築完成年月",
-    "建物移轉總面積(㎡)": "建物移轉總面積_平方",
-    "格局(房)": "格局_房",
-    "格局(廳)": "格局_廳",
-    "格局(衛)": "格局_衛",
-    "格局(隔間)": "格局_隔間",
-    "有無管理組織": "有無管理組織",
-    "總價(元)": "總價_元",
-    "單價(元/㎡)": "單價_元每平方",
-    "車位類別": "車位類別",
-    "車位移轉總面積(㎡)": "車位移轉總面積_平方",
-    "車位總價(元)": "車位總價_元",
-    "棟別": "棟別",
-    "總價(萬元)": "總價_萬元",
-    "土地移轉總面積(坪)": "土地移轉總面積_坪",
-    "建物移轉總面積(坪)": "建物移轉總面積_坪",
-    "建物移轉不含車面積(坪)": "建物移轉不含車面積_坪",
-    "建物單價(萬/坪)": "建物單價_萬每坪",
-    "車位移轉總面積(坪)": "車位移轉總面積_坪",
-    "社區案名": "社區案名",
-    "備註": "備註",
-    "編號": "編號",
-    "主建物面積": "主建物面積",
-    "附屬建物面積": "附屬建物面積",
-    "陽台面積": "陽台面積",
-    "電梯": "電梯",
-    "移轉編號": "移轉編號",
+    "鄉鎮市區": "district",
+    "區段": "section",
+    "交易標的": "transaction_type",
+    "土地區段位置建物區段門牌": "address",
+    "土地移轉總面積(㎡)": "land_area_sqm",
+    "使用分區編定": "zoning",
+    "非都市地使用分區": "non_urban_zoning",
+    "非都市土地使用地": "non_urban_land_use",
+    "交易年月": "transaction_date",
+    "交易筆棟數": "transaction_units",
+    "移轉層次": "floor_transfer",
+    "總樓層數": "total_floors",
+    "建物型態": "building_type",
+    "主要用途": "main_purpose",
+    "主要建材": "main_material",
+    "建築完成年月": "construction_date",
+    "建物移轉總面積(㎡)": "building_area_sqm",
+    "格局(房)": "rooms",
+    "格局(廳)": "halls",
+    "格局(衛)": "bathrooms",
+    "格局(隔間)": "partitions",
+    "有無管理組織": "management",
+    "總價(元)": "total_price",
+    "單價(元/㎡)": "unit_price_sqm",
+    "車位類別": "parking_type",
+    "車位移轉總面積(㎡)": "parking_area_sqm",
+    "車位總價(元)": "parking_price",
+    "棟別": "building_block",
+    "總價(萬元)": "total_price_10k",
+    "土地移轉總面積(坪)": "land_area_ping",
+    "建物移轉總面積(坪)": "building_area_ping",
+    "建物移轉不含車面積(坪)": "building_area_excl_parking",
+    "建物單價(萬/坪)": "unit_price_ping",
+    "車位移轉總面積(坪)": "parking_area_ping",
+    "社區案名": "community_name",
+    "備註": "remarks",
+    "編號": "_number_id",      # used to compute source_id
+    "主建物面積": "main_building_area",
+    "附屬建物面積": "auxiliary_building_area",
+    "陽台面積": "balcony_area",
+    "電梯": "elevator",
+    "移轉編號": "transfer_id",
 }
 
 
 def _safe(val):
-    """Convert NaN/formula strings to None."""
     if val is None:
         return None
     s = str(val).strip()
@@ -91,78 +93,79 @@ def _to_float(val):
 
 
 def import_from_file(path: str, source: str, db: Session) -> int:
-    """Parse an XLS/XLSX file and insert new records. Returns inserted count."""
     try:
         df = pd.read_excel(path, dtype=str)
     except Exception as e:
         logger.error("Failed to read %s: %s", path, e)
         return 0
 
-    # Normalize column names via map; keep unmapped columns as-is
     df.columns = [COLUMN_MAP.get(c, c) for c in df.columns]
 
     inserted = 0
     now = datetime.utcnow()
+    seen_ids: set = set()
 
     for _, row in df.iterrows():
-        移轉編號 = _safe(row.get("移轉編號"))
+        transfer_id = _safe(row.get("transfer_id"))
+        number_id = _safe(row.get("_number_id"))
+        source_id = transfer_id or number_id
 
-        record = {
-            "移轉編號": 移轉編號,
-            "鄉鎮市區": _safe(row.get("鄉鎮市區")),
-            "區段": _safe(row.get("區段")),
-            "交易標的": _safe(row.get("交易標的")),
-            "土地區段位置建物區段門牌": _safe(row.get("土地區段位置建物區段門牌")),
-            "土地移轉總面積_平方": _to_float(row.get("土地移轉總面積_平方")),
-            "使用分區編定": _safe(row.get("使用分區編定")),
-            "非都市地使用分區": _safe(row.get("非都市地使用分區")),
-            "非都市土地使用地": _safe(row.get("非都市土地使用地")),
-            "交易年月": _safe(row.get("交易年月")),
-            "交易筆棟數": _safe(row.get("交易筆棟數")),
-            "移轉層次": _safe(row.get("移轉層次")),
-            "總樓層數": _safe(row.get("總樓層數")),
-            "建物型態": _safe(row.get("建物型態")),
-            "主要用途": _safe(row.get("主要用途")),
-            "主要建材": _safe(row.get("主要建材")),
-            "建築完成年月": _safe(row.get("建築完成年月")),
-            "建物移轉總面積_平方": _to_float(row.get("建物移轉總面積_平方")),
-            "格局_房": _to_int(row.get("格局_房")),
-            "格局_廳": _to_int(row.get("格局_廳")),
-            "格局_衛": _to_int(row.get("格局_衛")),
-            "格局_隔間": _safe(row.get("格局_隔間")),
-            "有無管理組織": _safe(row.get("有無管理組織")),
-            "總價_元": _to_int(row.get("總價_元")),
-            "單價_元每平方": _to_float(row.get("單價_元每平方")),
-            "車位類別": _safe(row.get("車位類別")),
-            "車位移轉總面積_平方": _to_float(row.get("車位移轉總面積_平方")),
-            "車位總價_元": _to_int(row.get("車位總價_元")),
-            "棟別": _safe(row.get("棟別")),
-            "總價_萬元": _to_float(row.get("總價_萬元")),
-            "土地移轉總面積_坪": _to_float(row.get("土地移轉總面積_坪")),
-            "建物移轉總面積_坪": _to_float(row.get("建物移轉總面積_坪")),
-            "建物移轉不含車面積_坪": _to_float(row.get("建物移轉不含車面積_坪")),
-            "建物單價_萬每坪": _to_float(row.get("建物單價_萬每坪")),
-            "車位移轉總面積_坪": _to_float(row.get("車位移轉總面積_坪")),
-            "社區案名": _safe(row.get("社區案名")),
-            "備註": _safe(row.get("備註")),
-            "編號": _safe(row.get("編號")),
-            "主建物面積": _to_float(row.get("主建物面積")),
-            "附屬建物面積": _to_float(row.get("附屬建物面積")),
-            "陽台面積": _to_float(row.get("陽台面積")),
-            "電梯": _safe(row.get("電梯")),
-            "來源檔案": source,
-            "匯入時間": now,
-        }
+        if source_id is not None:
+            if source_id in seen_ids:
+                continue
+            exists = db.query(Transaction).filter_by(source_id=source_id).first()
+            if exists:
+                continue
+            seen_ids.add(source_id)
 
-        # If no 移轉編號, always insert (can't dedup)
-        if 移轉編號 is None:
-            db.add(Transaction(**record))
-            inserted += 1
-        else:
-            exists = db.query(Transaction).filter_by(移轉編號=移轉編號).first()
-            if not exists:
-                db.add(Transaction(**record))
-                inserted += 1
+        record = Transaction(
+            district=_safe(row.get("district")),
+            section=_safe(row.get("section")),
+            address=_safe(row.get("address")),
+            transaction_type=_safe(row.get("transaction_type")),
+            transaction_date=_safe(row.get("transaction_date")),
+            transaction_units=_safe(row.get("transaction_units")),
+            building_type=_safe(row.get("building_type")),
+            building_block=_safe(row.get("building_block")),
+            main_purpose=_safe(row.get("main_purpose")),
+            main_material=_safe(row.get("main_material")),
+            construction_date=_to_float(row.get("construction_date")),
+            total_floors=_safe(row.get("total_floors")),
+            floor_transfer=_safe(row.get("floor_transfer")),
+            elevator=_safe(row.get("elevator")),
+            rooms=_to_int(row.get("rooms")),
+            halls=_to_int(row.get("halls")),
+            bathrooms=_to_int(row.get("bathrooms")),
+            partitions=_safe(row.get("partitions")),
+            management=_safe(row.get("management")),
+            land_area_sqm=_to_float(row.get("land_area_sqm")),
+            building_area_sqm=_to_float(row.get("building_area_sqm")),
+            parking_area_sqm=_to_float(row.get("parking_area_sqm")),
+            land_area_ping=_to_float(row.get("land_area_ping")),
+            building_area_ping=_to_float(row.get("building_area_ping")),
+            building_area_excl_parking=_to_float(row.get("building_area_excl_parking")),
+            parking_area_ping=_to_float(row.get("parking_area_ping")),
+            main_building_area=_to_float(row.get("main_building_area")),
+            auxiliary_building_area=_to_float(row.get("auxiliary_building_area")),
+            balcony_area=_to_float(row.get("balcony_area")),
+            total_price=_to_int(row.get("total_price")),
+            total_price_10k=_to_float(row.get("total_price_10k")),
+            unit_price_sqm=_to_float(row.get("unit_price_sqm")),
+            unit_price_ping=_to_float(row.get("unit_price_ping")),
+            parking_price=_to_int(row.get("parking_price")),
+            parking_type=_safe(row.get("parking_type")),
+            zoning=_safe(row.get("zoning")),
+            non_urban_zoning=_safe(row.get("non_urban_zoning")),
+            non_urban_land_use=_safe(row.get("non_urban_land_use")),
+            community_name=_safe(row.get("community_name")),
+            remarks=_safe(row.get("remarks")),
+            transfer_id=transfer_id,
+            source_id=source_id,
+            source_file=source,
+            import_time=now,
+        )
+        db.add(record)
+        inserted += 1
 
     db.commit()
     logger.info("Imported %d new records from %s (source=%s)", inserted, path, source)
@@ -170,19 +173,19 @@ def import_from_file(path: str, source: str, db: Session) -> int:
 
 
 def download_and_import(db: Session) -> dict:
-    """Download both XLS files and import them. Returns summary."""
     results = {}
     for source, url in DOWNLOAD_URLS.items():
         dest = DATA_DIR / f"e_lvr_land_{source}.xls"
         try:
             logger.info("Downloading %s", url)
-            resp = requests.get(url, timeout=120)
+            resp = requests.get(url, timeout=120, verify=False)
             resp.raise_for_status()
             dest.write_bytes(resp.content)
             count = import_from_file(str(dest), source, db)
             results[source] = {"status": "ok", "inserted": count}
         except Exception as e:
             logger.error("Download/import failed for source=%s: %s", source, e)
+            db.rollback()
             results[source] = {"status": "error", "message": str(e)}
         finally:
             if dest.exists():

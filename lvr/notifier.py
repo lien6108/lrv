@@ -12,7 +12,7 @@ SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 
 
-def _build_html(results: dict, triggered_by: str) -> str:
+def _build_html(results: dict, triggered_by: str, total_records: int = 0) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     rows = ""
     total_inserted = 0
@@ -61,6 +61,7 @@ def _build_html(results: dict, triggered_by: str) -> str:
       </table>
       <p style="margin-bottom:0;color:#6b7280;font-size:13px;">
         本次共新增 <strong>{total_inserted}</strong> 筆交易記錄。<br>
+        資料庫目前總筆數：<strong>{total_records:,}</strong> 筆。<br>
         觸發方式：{triggered_by} ／ 時間：{now}
       </p>
     </div>
@@ -72,7 +73,11 @@ def _build_html(results: dict, triggered_by: str) -> str:
 </html>"""
 
 
-def send_import_notification(results: dict, triggered_by: str = "排程自動觸發") -> None:
+def send_import_notification(
+    results: dict,
+    triggered_by: str = "排程自動觸發",
+    total_records: int = 0,
+) -> None:
     """Send an email summary after a download-and-import run."""
     sender = os.getenv("GMAIL_USER")
     password = os.getenv("GMAIL_APP_PASSWORD")
@@ -86,13 +91,13 @@ def send_import_notification(results: dict, triggered_by: str = "排程自動觸
     total_inserted = sum(
         v.get("inserted", 0) for v in results.values() if v.get("status") == "ok"
     )
-    subject = f"【實價登錄】資料更新完成，本次新增 {total_inserted} 筆"
+    subject = f"【實價登錄】資料更新完成，本次新增 {total_inserted} 筆（累計 {total_records:,} 筆）"
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = NOTIFY_TO
-    msg.attach(MIMEText(_build_html(results, triggered_by), "html", "utf-8"))
+    msg.attach(MIMEText(_build_html(results, triggered_by, total_records), "html", "utf-8"))
 
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:

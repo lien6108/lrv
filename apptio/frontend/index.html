@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GCP Billing Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary:   '#1E40AF',
+            secondary: '#3B82F6',
+            accent:    '#F59E0B',
+            surface:   '#F8FAFC',
+          },
+          fontFamily: {
+            mono: ['"Fira Code"', 'ui-monospace', 'monospace'],
+            sans: ['"Fira Sans"', 'ui-sans-serif', 'system-ui'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .row-hover:hover { background-color: #EFF6FF; }
+  </style>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+
+<body class="bg-surface font-sans text-gray-800 min-h-screen">
+
+  <!-- ── Header ── -->
+  <header class="bg-primary shadow-lg">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+           class="w-7 h-7 text-accent flex-shrink-0">
+        <path d="M4.5 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM14.25
+                 8.625a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM1.5
+                 19.125a7.125 7.125 0 0 1 14.212-1.1A6.74 6.74 0 0 1 21
+                 19.125H1.5Z"/>
+      </svg>
+      <div>
+        <h1 class="text-white text-lg font-semibold leading-tight">GCP 帳務 Dashboard</h1>
+        <p class="text-blue-300 text-xs">GCP Billing Analytics</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main
+    class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8"
+    x-data="dashboard()"
+    x-init="init()"
+  >
+
+    <!-- Global loading -->
+    <div x-show="loading" class="flex items-center justify-center py-20">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <span class="ml-3 text-gray-400 text-sm">載入中…</span>
+    </div>
+
+    <div x-show="!loading" x-cloak>
+
+      <!-- ── Tabs ── -->
+      <div class="border-b border-gray-200 mb-8">
+        <nav class="-mb-px flex gap-1">
+          <!-- 帳單摘要 -->
+          <button
+            @click="switchTab('summary')"
+            :class="activeTab==='summary'
+              ? 'border-primary text-primary bg-blue-50'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+            class="border-b-2 py-3 px-6 text-sm font-medium cursor-pointer transition-colors
+                   duration-200 rounded-t-md flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+              <path d="M15.5 2A1.5 1.5 0 0 0 14 3.5v13a1.5 1.5 0 0 0 3 0v-13A1.5 1.5 0 0 0
+                       15.5 2ZM9.5 6A1.5 1.5 0 0 0 8 7.5v9a1.5 1.5 0 0 0 3 0v-9A1.5 1.5 0 0
+                       0 9.5 6ZM3.5 10A1.5 1.5 0 0 0 2 11.5v5a1.5 1.5 0 0 0 3 0v-5A1.5 1.5
+                       0 0 0 3.5 10Z"/>
+            </svg>
+            帳單摘要
+          </button>
+          <!-- 圖表分析 -->
+          <button
+            @click="switchTab('charts')"
+            :class="activeTab==='charts'
+              ? 'border-primary text-primary bg-blue-50'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+            class="border-b-2 py-3 px-6 text-sm font-medium cursor-pointer transition-colors
+                   duration-200 rounded-t-md flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+              <path fill-rule="evenodd" d="M1 2.75A.75.75 0 0 1 1.75 2h16.5a.75.75 0 0 1 0 1.5H18v8.75A2.75 2.75 0
+                       0 1 15.25 15h-1.072l.798 3.06a.75.75 0 0 1-1.452.38L13.41 18H6.59l-.114.44a.75.75 0 0
+                       1-1.452-.38L5.823 15H4.75A2.75 2.75 0 0 1 2 12.25V3.5h-.25A.75.75 0 0 1 1 2.75Z"
+                    clip-rule="evenodd"/>
+            </svg>
+            圖表分析
+          </button>
+          <!-- 帳務明細 -->
+          <button
+            @click="switchTab('line-items')"
+            :class="activeTab==='line-items'
+              ? 'border-primary text-primary bg-blue-50'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+            class="border-b-2 py-3 px-6 text-sm font-medium cursor-pointer transition-colors
+                   duration-200 rounded-t-md flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+              <path fill-rule="evenodd" d="M.99 5.24A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19
+                       5.25l.01 9.5A2.25 2.25 0 0 1 16.76 17H3.26A2.272 2.272 0 0 1 1
+                       14.74l-.01-9.5Zm8.26 9.52v-.625a.75.75 0 0 0-1.5 0v.615H3.26a.75.75 0
+                       0 1-.74-.752l-.01-9.5a.75.75 0 0 1 .75-.75h13.5a.75.75 0 0 1 .75.75l-.01
+                       9.5a.75.75 0 0 1-.75.75H9.25Z" clip-rule="evenodd"/>
+            </svg>
+            帳務明細
+          </button>
+        </nav>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 1 ── 帳單摘要 (billing_summary)
+      ═══════════════════════════════════════════════ -->
+      <div x-show="activeTab === 'summary'">
+
+        <!-- Filter Bar -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6
+                    flex flex-wrap gap-4 items-end">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs text-gray-500 font-medium">月份</label>
+            <select
+              x-model="summaryFilter.billing_year_month"
+              class="text-sm border border-gray-300 rounded-lg px-3 py-2 cursor-pointer
+                     focus:outline-none focus:ring-2 focus:ring-primary/50 min-w-[120px]"
+            >
+              <option value="">全部月份</option>
+              <template x-for="m in filterOptions.billing_year_months" :key="m">
+                <option :value="m" x-text="m"></option>
+              </template>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs text-gray-500 font-medium">帳單群組</label>
+            <select
+              x-model="summaryFilter.billing_group"
+              class="text-sm border border-gray-300 rounded-lg px-3 py-2 cursor-pointer
+                     focus:outline-none focus:ring-2 focus:ring-primary/50 min-w-[130px]"
+            >
+              <option value="">全部群組</option>
+              <template x-for="g in filterOptions.billing_groups" :key="g">
+                <option :value="g" x-text="g"></option>
+              </template>
+            </select>
+          </div>
+          <button
+            @click="summaryFilter = { billing_year_month: '', billing_group: '' }"
+            class="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg
+                   border border-gray-200 hover:bg-gray-50 cursor-pointer
+                   transition-colors duration-150"
+          >
+            清除篩選
+          </button>
+          <span class="ml-auto text-xs text-gray-400 self-end pb-2"
+                x-text="`共 ${filteredSummary().length} 筆`"></span>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-5 mb-8">
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">帳單筆數</p>
+            <p class="text-4xl font-semibold font-mono text-primary" x-text="filteredSummary().length"></p>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">GCP 用量合計</p>
+            <p class="text-2xl font-semibold font-mono text-primary"
+               x-text="fmt(filteredSummaryTotals().gcp_usd, 2) + ' USD'"></p>
+          </div>
+          <div class="bg-white rounded-xl border border-secondary/30 shadow-sm p-5">
+            <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Partner 用量合計</p>
+            <p class="text-2xl font-semibold font-mono text-secondary"
+               x-text="fmt(filteredSummaryTotals().partner_usd, 2) + ' USD'"></p>
+          </div>
+          <div class="bg-amber-50 rounded-xl border border-amber-200 shadow-sm p-5">
+            <p class="text-xs text-amber-600 uppercase tracking-wide mb-2">應付金額合計</p>
+            <p class="text-2xl font-semibold font-mono text-amber-700"
+               x-text="fmtTwd(filteredSummaryTotals().twd)"></p>
+          </div>
+        </div>
+
+        <!-- Summary Table -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-700">帳單摘要明細</h2>
+            <span class="text-xs text-gray-400" x-text="`共 ${filteredSummary().length} 筆`"></span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                  <th class="px-5 py-3.5 text-left font-medium">帳單群組</th>
+                  <th class="px-5 py-3.5 text-left font-medium">月份</th>
+                  <th class="px-5 py-3.5 text-right font-medium">GCP 用量 (USD)</th>
+                  <th class="px-5 py-3.5 text-right font-medium">Partner 用量 (USD)</th>
+                  <th class="px-5 py-3.5 text-right font-medium">匯率</th>
+                  <th class="px-5 py-3.5 text-right font-medium">應付金額 (TWD)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <template x-for="row in filteredSummary()" :key="row.billing_group + row.billing_year_month">
+                  <tr class="row-hover transition-colors duration-150">
+                    <td class="px-5 py-4">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs
+                                   font-medium bg-blue-100 text-blue-800"
+                            x-text="row.billing_group"></span>
+                    </td>
+                    <td class="px-5 py-4 font-mono text-sm text-gray-600" x-text="row.billing_year_month"></td>
+                    <td class="px-5 py-4 text-right font-mono text-sm text-gray-700"
+                        x-text="fmt(row.gcp_usage_total_usd, 2)"></td>
+                    <td class="px-5 py-4 text-right font-mono text-sm font-medium text-secondary"
+                        x-text="fmt(row.partner_usage_total_usd, 2)"></td>
+                    <td class="px-5 py-4 text-right font-mono text-xs text-gray-500"
+                        x-text="row.exchange_rate != null ? row.exchange_rate.toFixed(4) : '—'"></td>
+                    <td class="px-5 py-4 text-right font-mono text-sm font-semibold text-amber-700"
+                        x-text="fmtTwd(row.total_payable_twd)"></td>
+                  </tr>
+                </template>
+                <template x-if="filteredSummary().length === 0">
+                  <tr>
+                    <td colspan="6" class="px-4 py-10 text-center text-gray-400 text-sm">尚無資料</td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /summary -->
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 2 ── 圖表分析
+      ═══════════════════════════════════════════════ -->
+      <div x-show="activeTab === 'charts'">
+
+        <!-- Chart loading -->
+        <div x-show="chartsLoading" class="flex items-center justify-center py-20">
+          <div class="animate-spin rounded-full h-7 w-7 border-b-2 border-primary"></div>
+          <span class="ml-3 text-gray-400 text-sm">載入圖表資料…</span>
+        </div>
+
+        <div x-show="!chartsLoading" class="space-y-8">
+
+          <!-- Latest month badge -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">最新月份：</span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs
+                         font-semibold font-mono bg-primary text-white"
+                  x-text="chartsData.latest_month || '—'"></span>
+          </div>
+
+          <!-- Row 1: Area charts -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Chart 1: 每個部門近六個月花費 -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h3 class="text-sm font-semibold text-gray-700 mb-1">每個部門近六個月花費</h3>
+              <p class="text-xs text-gray-400 mb-5">Partner 費用（NT$ 含稅），依部門區分</p>
+              <div class="relative h-80">
+                <canvas id="deptChart"></canvas>
+                <div x-show="!chartsData.dept_monthly || chartsData.dept_monthly.length === 0"
+                     class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                  尚無部門資料（需匯入 project_master）
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart 2: Top 7 專案近半年成長 -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h3 class="text-sm font-semibold text-gray-700 mb-1">最花錢 Top 7 專案近半年成長</h3>
+              <p class="text-xs text-gray-400 mb-5">Partner 費用（NT$ 含稅），近六個月月趨勢</p>
+              <div class="relative h-80">
+                <canvas id="projChart"></canvas>
+                <div x-show="!chartsData.top_projects_monthly || chartsData.top_projects_monthly.length === 0"
+                     class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                  尚無專案資料
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 2: Doughnut charts -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <!-- Chart 3: 各版塊本月花費 -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h3 class="text-sm font-semibold text-gray-700 mb-1">各版塊本月花費</h3>
+              <p class="text-xs text-gray-400 mb-5">
+                本月 Partner 費用占比，依科別（版塊）區分
+              </p>
+              <div class="relative h-80">
+                <canvas id="sectionChart"></canvas>
+                <div x-show="!chartsData.section_this_month || chartsData.section_this_month.length === 0"
+                     class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                  尚無版塊資料（需匯入 project_master）
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart 4: 成本中心本月花費 -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h3 class="text-sm font-semibold text-gray-700 mb-1">本月成本中心花費</h3>
+              <p class="text-xs text-gray-400 mb-5">
+                本月 Partner 費用占比，依成本中心區分（僅 Applications）
+              </p>
+              <div class="relative h-80">
+                <canvas id="costCenterChart"></canvas>
+                <div x-show="!chartsData.cost_center_this_month || chartsData.cost_center_this_month.length === 0"
+                     class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                  尚無成本中心資料（需匯入 project_master）
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart 5: 類別本月花費 -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h3 class="text-sm font-semibold text-gray-700 mb-1">Applications / Shared Infra / Lab+PoC 本月花費</h3>
+              <p class="text-xs text-gray-400 mb-5">
+                本月 Partner 費用占比，依類別（category）區分
+              </p>
+              <div class="relative h-80">
+                <canvas id="categoryChart"></canvas>
+                <div x-show="!chartsData.category_this_month || chartsData.category_this_month.length === 0"
+                     class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                  尚無類別資料（需匯入 project_master）
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 3: MoM surge table -->
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h3 class="text-sm font-semibold text-gray-700">
+                  Applications 本月較上月增加 &gt; $200 專案清單
+                </h3>
+                <p class="text-xs text-gray-400 mt-0.5">
+                  <span x-text="(chartsData.mom_surge && chartsData.mom_surge[0]) ? chartsData.mom_surge[0].prev_month : '—'"></span>
+                  →
+                  <span x-text="(chartsData.mom_surge && chartsData.mom_surge[0]) ? chartsData.mom_surge[0].curr_month : '—'"></span>
+                  ・Partner 費用（NT$ 含稅）
+                </p>
+              </div>
+              <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-red-50 text-red-600"
+                    x-text="`共 ${(chartsData.mom_surge || []).length} 個專案`"></span>
+            </div>
+
+            <div x-show="!chartsData.mom_surge || chartsData.mom_surge.length === 0"
+                 class="px-6 py-12 text-center text-gray-400 text-sm">
+              無增幅超過 $200 的 Applications 專案
+            </div>
+
+            <div x-show="chartsData.mom_surge && chartsData.mom_surge.length > 0"
+                 class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                    <th class="px-5 py-3.5 text-left font-medium">部門</th>
+                    <th class="px-5 py-3.5 text-left font-medium">系統名稱</th>
+                    <th class="px-5 py-3.5 text-right font-medium">上月費用 (NT$)</th>
+                    <th class="px-5 py-3.5 text-right font-medium">本月費用 (NT$)</th>
+                    <th class="px-5 py-3.5 text-right font-medium">增加金額 (NT$)</th>
+                    <th class="px-5 py-3.5 text-right font-medium">增幅</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <template x-for="row in chartsData.mom_surge" :key="row.apid">
+                    <tr class="row-hover transition-colors duration-150">
+                      <td class="px-5 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs
+                                     font-medium bg-blue-100 text-blue-800"
+                              x-text="row.department"></span>
+                      </td>
+                      <td class="px-5 py-4">
+                        <p class="font-medium text-gray-800 text-sm" x-text="row.system_name"></p>
+                      </td>
+                      <td class="px-5 py-4 text-right font-mono text-sm text-gray-500"
+                          x-text="fmtTwd(row.prev_cost)"></td>
+                      <td class="px-5 py-4 text-right font-mono text-sm font-medium text-gray-800"
+                          x-text="fmtTwd(row.curr_cost)"></td>
+                      <td class="px-5 py-4 text-right font-mono text-sm font-semibold text-red-600"
+                          x-text="'+' + fmtTwd(row.diff)"></td>
+                      <td class="px-5 py-4 text-right text-xs">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full font-medium bg-red-50 text-red-600"
+                              x-text="row.prev_cost > 0
+                                ? '+' + ((row.diff / row.prev_cost) * 100).toFixed(1) + '%'
+                                : '新增'"></span>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Row 4: Shared Infra March bar chart -->
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <h3 class="text-sm font-semibold text-gray-700 mb-1">Shared Infra 3 月費用（by Service）
+            </h3>
+            <p class="text-xs text-gray-400 mb-5">
+              <span x-text="chartsData.shared_infra_march_month || '—'"></span>
+              ・Partner 費用（NT$ 含稅），依服務名稱排序
+            </p>
+            <div class="relative" :style="'height:' + Math.max(280, (chartsData.shared_infra_march || []).length * 40 + 80) + 'px'">
+              <canvas id="sharedInfraMarchChart"></canvas>
+              <div x-show="!chartsData.shared_infra_march || chartsData.shared_infra_march.length === 0"
+                   class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                無 Shared Infra 3 月資料（需匯入 project_master 且有 3 月帳單）
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /charts -->
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 3 ── 帳務明細 (billing_line_item)
+      ═══════════════════════════════════════════════ -->
+      <div x-show="activeTab === 'line-items'">
+
+        <!-- Filter Bar -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6
+                    flex flex-wrap gap-4 items-end">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs text-gray-500 font-medium">帳單群組</label>
+            <select
+              x-model="filters.billing_group"
+              @change="fetchLineItems(1)"
+              class="text-sm border border-gray-300 rounded-lg px-3 py-2 cursor-pointer
+                     focus:outline-none focus:ring-2 focus:ring-primary/50 min-w-[130px]"
+            >
+              <option value="">全部群組</option>
+              <template x-for="g in filterOptions.billing_groups" :key="g">
+                <option :value="g" x-text="g"></option>
+              </template>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs text-gray-500 font-medium">月份</label>
+            <select
+              x-model="filters.billing_year_month"
+              @change="fetchLineItems(1)"
+              class="text-sm border border-gray-300 rounded-lg px-3 py-2 cursor-pointer
+                     focus:outline-none focus:ring-2 focus:ring-primary/50 min-w-[120px]"
+            >
+              <option value="">全部月份</option>
+              <template x-for="m in filterOptions.billing_year_months" :key="m">
+                <option :value="m" x-text="m"></option>
+              </template>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs text-gray-500 font-medium">專案 ID</label>
+            <input
+              type="text"
+              x-model="filters.project_id"
+              @input.debounce.400ms="fetchLineItems(1)"
+              placeholder="搜尋專案 ID…"
+              class="text-sm border border-gray-300 rounded-lg px-3 py-2 min-w-[200px]
+                     focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+          <button
+            @click="clearFilters()"
+            class="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg
+                   border border-gray-200 hover:bg-gray-50 cursor-pointer
+                   transition-colors duration-150"
+          >
+            清除篩選
+          </button>
+          <span class="ml-auto text-xs text-gray-400 self-end pb-2"
+                x-text="lineItemsMeta.total > 0
+                  ? `共 ${lineItemsMeta.total.toLocaleString()} 筆`
+                  : '尚無資料'"></span>
+        </div>
+
+        <!-- Line Items Table -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div x-show="lineItemsLoading" class="flex items-center justify-center py-10">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span class="ml-2 text-gray-400 text-sm">查詢中…</span>
+          </div>
+          <div x-show="!lineItemsLoading" class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                  <th class="px-4 py-3.5 text-left font-medium whitespace-nowrap">群組</th>
+                  <th class="px-4 py-3.5 text-left font-medium whitespace-nowrap">月份</th>
+                  <th class="px-4 py-3.5 text-left font-medium whitespace-nowrap">專案 ID</th>
+                  <th class="px-4 py-3.5 text-left font-medium whitespace-nowrap">專案名稱</th>
+                  <th class="px-4 py-3.5 text-left font-medium whitespace-nowrap">服務</th>
+                  <th class="px-4 py-3.5 text-left font-medium whitespace-nowrap">SKU</th>
+                  <th class="px-4 py-3.5 text-left font-medium whitespace-nowrap">用量開始</th>
+                  <th class="px-4 py-3.5 text-left font-medium whitespace-nowrap">用量結束</th>
+                  <th class="px-4 py-3.5 text-right font-medium whitespace-nowrap">使用量</th>
+                  <th class="px-4 py-3.5 text-right font-medium whitespace-nowrap">Google (USD)</th>
+                  <th class="px-4 py-3.5 text-right font-medium whitespace-nowrap">Partner (USD)</th>
+                  <th class="px-4 py-3.5 text-right font-medium whitespace-nowrap">折扣 (USD)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <template x-for="(row, idx) in lineItemsData" :key="idx">
+                  <tr class="row-hover transition-colors duration-150">
+                    <td class="px-4 py-3.5">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs
+                                   font-medium bg-blue-100 text-blue-800"
+                            x-text="row.billing_group"></span>
+                    </td>
+                    <td class="px-4 py-3.5 font-mono text-xs text-gray-500"
+                        x-text="row.billing_year_month"></td>
+                    <td class="px-4 py-3.5 font-mono text-xs text-primary max-w-[160px]">
+                      <span class="block truncate" :title="row.project_id"
+                            x-text="row.project_id || '—'"></span>
+                    </td>
+                    <td class="px-4 py-3.5 text-xs text-gray-700 max-w-[180px]">
+                      <span class="block truncate" :title="row.project_name"
+                            x-text="row.project_name || '—'"></span>
+                    </td>
+                    <td class="px-4 py-3.5 text-xs text-gray-600 max-w-[180px]">
+                      <span class="block truncate" :title="row.service_description"
+                            x-text="row.service_description || '—'"></span>
+                    </td>
+                    <td class="px-4 py-3.5 text-xs text-gray-500 max-w-[180px]">
+                      <span class="block truncate" :title="row.sku_description"
+                            x-text="row.sku_description || '—'"></span>
+                    </td>
+                    <td class="px-4 py-3.5 font-mono text-xs text-gray-500 whitespace-nowrap"
+                        x-text="row.usage_start_date || '—'"></td>
+                    <td class="px-4 py-3.5 font-mono text-xs text-gray-500 whitespace-nowrap"
+                        x-text="row.usage_end_date || '—'"></td>
+                    <td class="px-4 py-3.5 text-right font-mono text-xs text-gray-600 whitespace-nowrap">
+                      <span x-text="row.usage_amount != null
+                        ? row.usage_amount.toLocaleString('en-US', {maximumFractionDigits: 4})
+                        : '—'"></span>
+                      <span class="text-gray-400 ml-0.5 text-xs" x-text="row.usage_unit || ''"></span>
+                    </td>
+                    <td class="px-4 py-3.5 text-right font-mono text-xs text-gray-600"
+                        x-text="fmt(row.google_cost, 4)"></td>
+                    <td class="px-4 py-3.5 text-right font-mono text-xs font-medium text-secondary"
+                        x-text="fmt(row.partner_cost, 4)"></td>
+                    <td class="px-4 py-3.5 text-right font-mono text-xs"
+                        :class="(row.total_discount ?? 0) < 0 ? 'text-green-600' : 'text-gray-500'"
+                        x-text="fmt(row.total_discount, 4)"></td>
+                  </tr>
+                </template>
+                <template x-if="lineItemsData.length === 0 && !lineItemsLoading">
+                  <tr>
+                    <td colspan="12" class="px-4 py-10 text-center text-gray-400 text-sm">尚無資料</td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div
+            x-show="!lineItemsLoading && lineItemsMeta.pages > 1"
+            class="px-5 py-4 border-t border-gray-100 flex items-center justify-between"
+          >
+            <span class="text-xs text-gray-400">
+              第 <span class="font-medium text-gray-600" x-text="lineItemsMeta.page"></span> 頁，
+              共 <span class="font-medium text-gray-600" x-text="lineItemsMeta.pages"></span> 頁
+            </span>
+            <div class="flex items-center gap-1">
+              <button
+                @click="fetchLineItems(lineItemsMeta.page - 1)"
+                :disabled="lineItemsMeta.page <= 1"
+                :class="lineItemsMeta.page <= 1 ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100'"
+                class="px-3 py-1.5 text-xs border border-gray-200 rounded-md transition-colors duration-150"
+              >&laquo;</button>
+              <template x-for="p in paginationPages()" :key="String(p) + lineItemsMeta.page">
+                <button
+                  @click="typeof p === 'number' && fetchLineItems(p)"
+                  :class="{
+                    'bg-primary text-white border-primary': p === lineItemsMeta.page,
+                    'cursor-pointer hover:bg-gray-100': typeof p === 'number' && p !== lineItemsMeta.page,
+                    'cursor-default text-gray-400 border-transparent': p === '…'
+                  }"
+                  class="px-3 py-1.5 text-xs border border-gray-200 rounded-md transition-colors duration-150"
+                  x-text="p"
+                ></button>
+              </template>
+              <button
+                @click="fetchLineItems(lineItemsMeta.page + 1)"
+                :disabled="lineItemsMeta.page >= lineItemsMeta.pages"
+                :class="lineItemsMeta.page >= lineItemsMeta.pages ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100'"
+                class="px-3 py-1.5 text-xs border border-gray-200 rounded-md transition-colors duration-150"
+              >&raquo;</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /line-items -->
+
+    </div><!-- /!loading -->
+  </main>
+
+  <script>
+    // ── Chart color palettes ──────────────────────────────────────────────────
+    const AREA_COLORS = [
+      { border: '#1E40AF', bg: 'rgba(30,64,175,0.12)' },
+      { border: '#10B981', bg: 'rgba(16,185,129,0.12)' },
+      { border: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
+      { border: '#EF4444', bg: 'rgba(239,68,68,0.12)'  },
+      { border: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
+      { border: '#EC4899', bg: 'rgba(236,72,153,0.12)' },
+      { border: '#06B6D4', bg: 'rgba(6,182,212,0.12)'  },
+      { border: '#84CC16', bg: 'rgba(132,204,22,0.12)' },
+      { border: '#F97316', bg: 'rgba(249,115,22,0.12)' },
+      { border: '#14B8A6', bg: 'rgba(20,184,166,0.12)' },
+    ];
+    const PIE_COLORS = [
+      '#1E40AF','#10B981','#F59E0B','#EF4444',
+      '#8B5CF6','#EC4899','#06B6D4','#84CC16','#F97316','#14B8A6',
+    ];
+
+    // ── Alpine component ──────────────────────────────────────────────────────
+    function dashboard() {
+      return {
+        activeTab: 'summary',
+        loading: false,
+
+        // Summary
+        summaryData: [],
+        summaryTotals: { gcp_usd: 0, partner_usd: 0, twd: 0 },
+        summaryFilter: { billing_year_month: '', billing_group: '' },
+
+        // Charts
+        chartsLoading: false,
+        chartsData: {},
+        chartsRendered: false,
+        chartInstances: {},
+
+        // Line Items
+        lineItemsData: [],
+        lineItemsMeta: { total: 0, page: 1, page_size: 50, pages: 1 },
+        lineItemsLoading: false,
+
+        // Filters
+        filters: { billing_group: '', billing_year_month: '', project_id: '' },
+        filterOptions: { billing_groups: [], billing_year_months: [] },
+
+        // ── Lifecycle ──
+        async init() {
+          this.loading = true;
+          await Promise.all([this.fetchSummary(), this.fetchFilters()]);
+          this.loading = false;
+        },
+
+        async switchTab(tab) {
+          this.activeTab = tab;
+          if (tab === 'charts' && !this.chartsRendered) {
+            await this.fetchAndRenderCharts();
+          }
+          if (tab === 'line-items' && this.lineItemsData.length === 0) {
+            await this.fetchLineItems(1);
+          }
+        },
+
+        // ── Summary ──
+        async fetchSummary() {
+          const res = await fetch('/api/summary');
+          this.summaryData = await res.json();
+          this.summaryTotals = {
+            gcp_usd:     this.summaryData.reduce((s, r) => s + (r.gcp_usage_total_usd     ?? 0), 0),
+            partner_usd: this.summaryData.reduce((s, r) => s + (r.partner_usage_total_usd  ?? 0), 0),
+            twd:         this.summaryData.reduce((s, r) => s + (r.total_payable_twd        ?? 0), 0),
+          };
+        },
+
+        filteredSummary() {
+          return this.summaryData.filter(row => {
+            if (this.summaryFilter.billing_year_month && row.billing_year_month !== this.summaryFilter.billing_year_month) return false;
+            if (this.summaryFilter.billing_group && row.billing_group !== this.summaryFilter.billing_group) return false;
+            return true;
+          });
+        },
+
+        filteredSummaryTotals() {
+          const data = this.filteredSummary();
+          return {
+            gcp_usd:     data.reduce((s, r) => s + (r.gcp_usage_total_usd     ?? 0), 0),
+            partner_usd: data.reduce((s, r) => s + (r.partner_usage_total_usd  ?? 0), 0),
+            twd:         data.reduce((s, r) => s + (r.total_payable_twd        ?? 0), 0),
+          };
+        },
+
+        // ── Filters ──
+        async fetchFilters() {
+          const res = await fetch('/api/filters');
+          this.filterOptions = await res.json();
+        },
+
+        // ── Charts ──
+        async fetchAndRenderCharts() {
+          this.chartsLoading = true;
+          const res = await fetch('/api/charts');
+          this.chartsData = await res.json();
+          this.chartsLoading = false;
+          // Wait one tick for x-show to make the canvases visible
+          await this.$nextTick();
+          this.renderAreaChart('deptChart',              this.chartsData.dept_monthly,          'department');
+          this.renderAreaChart('projChart',              this.chartsData.top_projects_monthly,  'project_label');
+          this.renderDoughnut( 'sectionChart',           this.chartsData.section_this_month,    'section');
+          this.renderDoughnut( 'costCenterChart',        this.chartsData.cost_center_this_month,'cost_center');
+          this.renderDoughnut( 'categoryChart',          this.chartsData.category_this_month,   'category');
+          this.renderHBarChart('sharedInfraMarchChart',  this.chartsData.shared_infra_march);
+          this.chartsRendered = true;
+        },
+
+        renderAreaChart(id, rawData, groupKey) {
+          const canvas = document.getElementById(id);
+          if (!canvas || !rawData || rawData.length === 0) return;
+          const existing = Chart.getChart(canvas);
+          if (existing) existing.destroy();
+
+          const months   = [...new Set(rawData.map(r => r.billing_year_month))].sort();
+          const groups   = [...new Set(rawData.map(r => r[groupKey]))];
+          const datasets = groups.map((g, i) => {
+            const c = AREA_COLORS[i % AREA_COLORS.length];
+            return {
+              label: g || '未分類',
+              data: months.map(m => {
+                const row = rawData.find(r => r[groupKey] === g && r.billing_year_month === m);
+                return row ? Math.round(row.cost * 100) / 100 : 0;
+              }),
+              borderColor: c.border,
+              backgroundColor: c.bg,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              borderWidth: 2,
+            };
+          });
+
+          new Chart(canvas, {
+            type: 'line',
+            data: { labels: months, datasets },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: { boxWidth: 12, padding: 14, font: { size: 11, family: 'Fira Sans' } },
+                },
+                tooltip: {
+                  callbacks: {
+                    label: ctx =>
+                      ` ${ctx.dataset.label}: NT$${Math.round(ctx.parsed.y).toLocaleString()}`,
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  grid: { display: false },
+                  ticks: { font: { size: 11, family: 'Fira Code' } },
+                },
+                y: {
+                  ticks: {
+                    font: { size: 11, family: 'Fira Code' },
+                    callback: v => 'NT$' + Math.round(v).toLocaleString(),
+                  },
+                  grid: { color: 'rgba(0,0,0,0.05)' },
+                },
+              },
+            },
+          });
+        },
+
+        renderDoughnut(id, rawData, labelKey) {
+          const canvas = document.getElementById(id);
+          if (!canvas || !rawData || rawData.length === 0) return;
+          const existing = Chart.getChart(canvas);
+          if (existing) existing.destroy();
+
+          const labels = rawData.map(r => r[labelKey] || '未分類');
+          const values = rawData.map(r => Math.round(r.cost * 100) / 100);
+          const total  = values.reduce((a, b) => a + b, 0);
+
+          new Chart(canvas, {
+            type: 'doughnut',
+            data: {
+              labels,
+              datasets: [{
+                data: values,
+                backgroundColor: PIE_COLORS.slice(0, labels.length),
+                borderWidth: 2,
+                borderColor: '#fff',
+                hoverOffset: 10,
+              }],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: '58%',
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: { boxWidth: 12, padding: 14, font: { size: 11, family: 'Fira Sans' } },
+                },
+                tooltip: {
+                  callbacks: {
+                    label: ctx => {
+                      const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                      return ` ${ctx.label}: NT$${Math.round(ctx.parsed).toLocaleString()} (${pct}%)`;
+                    },
+                  },
+                },
+              },
+            },
+          });
+        },
+
+        renderHBarChart(id, rawData) {
+          const canvas = document.getElementById(id);
+          if (!canvas || !rawData || rawData.length === 0) return;
+          const existing = Chart.getChart(canvas);
+          if (existing) existing.destroy();
+
+          const labels = rawData.map(r => r.service || '未知服務');
+          const values = rawData.map(r => Math.round(r.cost * 100) / 100);
+          const total  = values.reduce((a, b) => a + b, 0);
+
+          new Chart(canvas, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Partner 費用 (NT$ 含稅)',
+                data: values,
+                backgroundColor: labels.map((_, i) => PIE_COLORS[i % PIE_COLORS.length] + 'CC'),
+                borderColor:     labels.map((_, i) => PIE_COLORS[i % PIE_COLORS.length]),
+                borderWidth: 1,
+                borderRadius: 4,
+              }],
+            },
+            options: {
+              indexAxis: 'y',
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: ctx => {
+                      const pct = ((ctx.parsed.x / total) * 100).toFixed(1);
+                      return ` NT$${Math.round(ctx.parsed.x).toLocaleString()} (${pct}%)`;
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  ticks: {
+                    font: { size: 11, family: 'Fira Code' },
+                    callback: v => 'NT$' + Math.round(v).toLocaleString(),
+                  },
+                  grid: { color: 'rgba(0,0,0,0.05)' },
+                },
+                y: {
+                  ticks: { font: { size: 11, family: 'Fira Sans' } },
+                  grid: { display: false },
+                },
+              },
+            },
+          });
+        },
+
+        // ── Line Items ──
+        async fetchLineItems(page = 1) {
+          this.lineItemsLoading = true;
+          const active = Object.fromEntries(Object.entries(this.filters).filter(([, v]) => v));
+          const params = new URLSearchParams({ page, page_size: 50, ...active });
+          const res  = await fetch(`/api/line-items?${params}`);
+          const data = await res.json();
+          this.lineItemsData = data.data;
+          this.lineItemsMeta = {
+            total: data.total, page: data.page,
+            page_size: data.page_size, pages: data.pages,
+          };
+          this.lineItemsLoading = false;
+        },
+
+        clearFilters() {
+          this.filters = { billing_group: '', billing_year_month: '', project_id: '' };
+          this.fetchLineItems(1);
+        },
+
+        paginationPages() {
+          const { page, pages } = this.lineItemsMeta;
+          const delta = 2, result = [];
+          const lo = Math.max(1, page - delta);
+          const hi = Math.min(pages, page + delta);
+          if (lo > 1)  { result.push(1); if (lo > 2) result.push('…'); }
+          for (let i = lo; i <= hi; i++) result.push(i);
+          if (hi < pages) { if (hi < pages - 1) result.push('…'); result.push(pages); }
+          return result;
+        },
+
+        // ── Formatters ──
+        fmt(val, decimals = 2) {
+          if (val == null) return '—';
+          return val.toLocaleString('en-US', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          });
+        },
+        fmtTwd(val) {
+          if (val == null) return '—';
+          return val.toLocaleString('zh-TW', {
+            style: 'currency', currency: 'TWD', maximumFractionDigits: 0,
+          });
+        },
+      };
+    }
+  </script>
+</body>
+</html>

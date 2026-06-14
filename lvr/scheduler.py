@@ -24,12 +24,12 @@ def _scheduled_import():
 def start_scheduler():
     scheduler.add_job(
         _scheduled_import,
-        CronTrigger(day="5,15,25", hour=0, minute=0, timezone="Asia/Taipei"),
+        CronTrigger(day="1,11,21", hour=0, minute=0, timezone="Asia/Taipei"),
         id="monthly_import",
         replace_existing=True,
     )
     scheduler.start()
-    logger.info("Scheduler started — runs on day 5, 15, 25 of each month at 00:00 CST")
+    logger.info("Scheduler started — runs on day 1, 11, 21 of each month at 00:00 CST")
 
 
 def stop_scheduler():

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 
   -- 建物
   building_type               TEXT,
+  building_block              TEXT,
   main_purpose                TEXT,
   main_material               TEXT,
   construction_date           REAL,
@@ -60,7 +61,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   community_name              TEXT,
   remarks                     TEXT,
   transfer_id                 TEXT,
-  source_id                   TEXT     -- 去重唯一識別碼（移轉編號 or 編號）
+  source_id                   TEXT,    -- 去重唯一識別碼（移轉編號 or 編號）
+  source_file                 TEXT     -- 'a' 買賣成交 or 'b' 預售屋
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_source_id       ON transactions(source_id) WHERE source_id IS NOT NULL;

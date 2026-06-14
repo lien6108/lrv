@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS project_master (
     project_id   TEXT UNIQUE NOT NULL,
     apid         TEXT,
     category     TEXT,
+    sector       TEXT,
     department   TEXT,
     section      TEXT,
     project_name TEXT,

@@ -1,0 +1,4 @@
+backend/billing.db
+backend/__pycache__/
+*.pyc
+.env

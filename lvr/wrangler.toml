@@ -6,7 +6,7 @@ compatibility_date = "2025-01-01"
 directory = "./public"
 
 [triggers]
-crons = ["0 2 5,15,25 * *"]
+crons = ["0 2 1,11,21 * *"]
 
 [[d1_databases]]
 binding = "DB"

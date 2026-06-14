@@ -26,6 +26,7 @@ _PROJECT_SHEET = "雲端專案控管表"
 
 _PROJECT_COL_MAP = {
     "類別": "category",
+    "板塊": "sector",
     "部門": "department",
     "科別": "section",
     "專案名稱": "project_name",
@@ -40,11 +41,20 @@ def import_projects(db_path: str, excel_path: str) -> None:
     wb = openpyxl.load_workbook(excel_path, data_only=True)
     ws = wb[_PROJECT_SHEET]
 
-    header = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    # Scan for the header row (the one containing the project ID column)
+    header_row_num = None
+    for i, row in enumerate(ws.iter_rows(min_row=1, max_row=10, values_only=True), 1):
+        if "專案編號(Project ID)" in row:
+            header_row_num = i
+            break
+    if header_row_num is None:
+        raise ValueError(f"Cannot find header row in sheet '{_PROJECT_SHEET}'")
+
+    header = list(ws.iter_rows(min_row=header_row_num, max_row=header_row_num, values_only=True))[0]
     col_index = {name: i for i, name in enumerate(header) if name}
 
     rows = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
+    for row in ws.iter_rows(min_row=header_row_num + 1, values_only=True):
         project_id = row[col_index["專案編號(Project ID)"]]
         if not project_id:
             continue
@@ -52,6 +62,7 @@ def import_projects(db_path: str, excel_path: str) -> None:
             "project_id":   str(project_id).strip(),
             "apid":         _str(row, col_index, "APID"),
             "category":     _str(row, col_index, "類別"),
+            "sector":       _str(row, col_index, "板塊"),
             "department":   _str(row, col_index, "部門"),
             "section":      _str(row, col_index, "科別"),
             "project_name": _str(row, col_index, "專案名稱"),
@@ -63,12 +74,13 @@ def import_projects(db_path: str, excel_path: str) -> None:
         conn.executemany(
             """
             INSERT INTO project_master
-                (project_id, apid, category, department, section, project_name, environment, cost_center)
+                (project_id, apid, category, sector, department, section, project_name, environment, cost_center)
             VALUES
-                (:project_id, :apid, :category, :department, :section, :project_name, :environment, :cost_center)
+                (:project_id, :apid, :category, :sector, :department, :section, :project_name, :environment, :cost_center)
             ON CONFLICT(project_id) DO UPDATE SET
                 apid         = excluded.apid,
                 category     = excluded.category,
+                sector       = excluded.sector,
                 department   = excluded.department,
                 section      = excluded.section,
                 project_name = excluded.project_name,
@@ -106,12 +118,24 @@ _DISCOUNT_COLS = {
 }
 
 
-def import_billing(db_path: str, folder_path: str, billing_year_month: str) -> None:
+def import_billing(db_path: str, folder_path: str, billing_year_month: str, force: bool = False) -> None:
     folder = Path(folder_path).resolve()
     billing_group = folder.name
     imported_at = datetime.now().isoformat(timespec="seconds")
 
     with get_connection(db_path) as conn:
+        if force:
+            existing = conn.execute(
+                "SELECT id FROM billing_file WHERE billing_group=? AND billing_year_month=?",
+                (billing_group, billing_year_month),
+            ).fetchone()
+            if existing:
+                old_id = existing[0]
+                conn.execute("DELETE FROM billing_summary WHERE billing_file_id=?", (old_id,))
+                conn.execute("DELETE FROM billing_line_item WHERE billing_file_id=?", (old_id,))
+                conn.execute("DELETE FROM billing_file WHERE id=?", (old_id,))
+                print(f"Force-deleted existing: {billing_group} / {billing_year_month} (id={old_id})")
+
         try:
             conn.execute(
                 "INSERT INTO billing_file (billing_group, billing_year_month, imported_at) VALUES (?, ?, ?)",
@@ -119,7 +143,7 @@ def import_billing(db_path: str, folder_path: str, billing_year_month: str) -> N
             )
             billing_file_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         except sqlite3.IntegrityError:
-            print(f"Already imported: {billing_group} / {billing_year_month} — skipping")
+            print(f"Already imported: {billing_group} / {billing_year_month} — skipping (use --force to reimport)")
             return
 
         xlsx_files = sorted(folder.glob("*.xlsx"))
@@ -128,7 +152,7 @@ def import_billing(db_path: str, folder_path: str, billing_year_month: str) -> N
             return
 
         all_line_items = []
-        summary_data = None
+        summary_data = None  # [gcp, partner, rate, twd]
 
         for xlsx_path in xlsx_files:
             if xlsx_path.name.startswith("~$"):
@@ -145,11 +169,19 @@ def import_billing(db_path: str, folder_path: str, billing_year_month: str) -> N
                 ws = wb[sheet_name]
                 all_line_items.extend(_read_line_items(ws, billing_file_id))
 
-            if summary_data is None:
-                ws0 = wb[wb.sheetnames[0]]
-                candidate = _read_summary(ws0)
-                if any(v is not None for v in candidate):
-                    summary_data = candidate
+            ws0 = wb[wb.sheetnames[0]]
+            candidate = _read_summary(ws0)
+            if any(v is not None for v in candidate):
+                if summary_data is None:
+                    summary_data = list(candidate)
+                else:
+                    # Accumulate GCP, partner, TWD; keep exchange rate from first file
+                    summary_data = [
+                        (summary_data[0] or 0) + (candidate[0] or 0),
+                        (summary_data[1] or 0) + (candidate[1] or 0),
+                        summary_data[2] or candidate[2],
+                        (summary_data[3] or 0) + (candidate[3] or 0),
+                    ]
 
         _insert_line_items(conn, all_line_items)
 
@@ -244,6 +276,8 @@ def main():
                         help="Project master Excel path (used with --projects)")
     parser.add_argument("--month", metavar="YYYY-MM",
                         help="Billing year-month (used with --billing)")
+    parser.add_argument("--force", action="store_true",
+                        help="Delete existing record and reimport (used with --billing)")
 
     args = parser.parse_args()
     init_db(args.db)
@@ -253,7 +287,7 @@ def main():
     else:
         if not args.month:
             parser.error("--month YYYY-MM is required with --billing")
-        import_billing(args.db, args.billing, args.month)
+        import_billing(args.db, args.billing, args.month, force=args.force)
 
 
 if __name__ == "__main__":

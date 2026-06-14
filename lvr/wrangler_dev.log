@@ -1,0 +1,39 @@
+
+ ⛅️ wrangler 4.95.0
+───────────────────
+Using secrets defined in .env
+Your Worker has access to the following bindings:
+Binding                                  Resource                  Mode
+env.DB (lvr_db)                          D1 Database               local
+env.GMAIL_USER ("(hidden)")              Environment Variable      local
+env.GMAIL_APP_PASSWORD ("(hidden)")      Environment Variable      local
+
+⎔ Starting local server...
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mScheduled Workers are not automatically triggered during local development.[0m
+
+  To manually trigger a scheduled event, run:
+    curl "http://127.0.0.1:8787/cdn-cgi/handler/scheduled"
+  For more details, see [4mhttps://developers.cloudflare.com/workers/configuration/cron-triggers/#test-cron-triggers-locally[0m
+
+
+[wrangler:info] Ready on http://127.0.0.1:8787
+[wrangler:info] GET / 200 OK (41ms)
+[wrangler:error] Error: D1_ERROR: no such table: transactions: SQLITE_ERROR
+    at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:139:19)
+    at null.<anonymous> (async cloudflare-internal:d1-api:323:39)
+    at async handleExport (file:///e:/Vide%20code%20side%20project/lvr/src/index.js:458:18)
+    at async jsonError (file:///C:/Users/u1070/AppData/Local/npm-cache/_npx/61e1327a8aba9411/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts:22:10)
+    at async drainBody (file:///C:/Users/u1070/AppData/Local/npm-cache/_npx/61e1327a8aba9411/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts:5:10)
+Caused by: Error: no such table: transactions: SQLITE_ERROR
+    at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:140:24)
+    at null.<anonymous> (async cloudflare-internal:d1-api:323:39)
+    at async handleExport (file:///e:/Vide%20code%20side%20project/lvr/src/index.js:458:18)
+    at async jsonError (file:///C:/Users/u1070/AppData/Local/npm-cache/_npx/61e1327a8aba9411/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts:22:10)
+    at async drainBody (file:///C:/Users/u1070/AppData/Local/npm-cache/_npx/61e1327a8aba9411/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts:5:10)
+[wrangler:info] GET /api/export 500 Internal Server Error (55ms)
+[wrangler:info] GET /api/export 200 OK (27ms)
+[wrangler:info] GET / 200 OK (3ms)
+[wrangler:info] GET /api/export 200 OK (21ms)
+[wrangler:info] GET /api/export 200 OK (15ms)
+[wrangler:info] GET /api/export 200 OK (19ms)
+[wrangler:info] GET /api/stats 200 OK (17ms)
