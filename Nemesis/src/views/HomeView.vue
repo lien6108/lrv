@@ -9,7 +9,7 @@
     </div>
 
     <div class="home-cards">
-      <RouterLink to="/phase/setup" class="home-card">
+      <RouterLink to="/guide/setup" class="home-card">
         <span class="card-icon">
           <AppIcon name="clipboard-list" :size="28" :stroke-width="1.5" />
         </span>

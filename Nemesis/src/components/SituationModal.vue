@@ -41,9 +41,21 @@
         </div>
 
         <!-- Situation detail -->
-        <div v-else class="situation-detail prose">
-          <component :is="selectedComponent" v-if="selectedComponent" />
-          <p v-else class="loading">載入中...</p>
+        <div v-else class="situation-detail">
+          <p v-if="loadingDetail" class="loading">載入中...</p>
+          <template v-else-if="situationData">
+            <div
+              v-for="(step, i) in situationData.steps"
+              :key="step.id"
+              class="step-item"
+            >
+              <div class="step-num">{{ i + 1 }}</div>
+              <div class="step-content">
+                <h4>{{ step.title }}</h4>
+                <p>{{ step.body }}</p>
+              </div>
+            </div>
+          </template>
         </div>
 
       </div>
@@ -59,7 +71,8 @@ const injectedOpen = inject('situationModalOpen', null)
 const localOpen = ref(false)
 const open = injectedOpen ?? localOpen
 const selected = ref(null)
-const selectedComponent = ref(null)
+const situationData = ref(null)
+const loadingDetail = ref(false)
 
 const situations = [
   { id: 'encounter-alien', icon: 'shield-alert', title: '遭遇異形', severity: 'high' },
@@ -70,22 +83,27 @@ const situations = [
   { id: 'malfunction', icon: 'wrench', title: '系統故障', severity: 'medium' },
 ]
 
-const situationModules = import.meta.glob('../../content/situations/*.md')
+const situationModules = import.meta.glob('../../content/situations/*.json')
 
 async function select(s) {
   selected.value = s
-  selectedComponent.value = null
-  const key = `../../content/situations/${s.id}.md`
-  if (situationModules[key]) {
-    const mod = await situationModules[key]()
-    selectedComponent.value = mod.default
+  situationData.value = null
+  loadingDetail.value = true
+  try {
+    const key = `../../content/situations/${s.id}.json`
+    if (situationModules[key]) {
+      const mod = await situationModules[key]()
+      situationData.value = mod.default || mod
+    }
+  } finally {
+    loadingDetail.value = false
   }
 }
 
 function close() {
   open.value = false
   selected.value = null
-  selectedComponent.value = null
+  situationData.value = null
 }
 
 function onKeydown(e) {
@@ -243,8 +261,52 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   text-align: center;
 }
 
+/* Situation detail — step list */
 .situation-detail {
-  padding: 20px 24px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.step-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.step-item:last-child {
+  border-bottom: none;
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-accent-dim);
+  border: 1px solid rgba(230, 57, 70, 0.35);
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.step-content h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 5px;
+}
+
+.step-content p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
 }
 
 .loading {

@@ -16,10 +16,6 @@ const router = createRouter({
       path: '/phase/:id',
       redirect: to => `/guide/${to.params.id}`,
     },
-    {
-      path: '/situation/:id',
-      component: () => import('../views/SituationView.vue'),
-    },
   ],
 })
 
