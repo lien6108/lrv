@@ -1,11 +1,11 @@
-import { reactive, ref, computed, isRef } from 'vue'
+import { ref, computed, isRef } from 'vue'
+import { useGameContext } from './useGameContext.js'
 
 export function useGuideSession(stepsInput) {
   const stepsRef = isRef(stepsInput) ? stepsInput : ref(stepsInput)
 
   const stepIndex = ref(0)
-  const savedCount = sessionStorage.getItem('nemesis_player_count')
-  const context = reactive({ player_count: savedCount ? Number(savedCount) : null, current_player: 1 })
+  const context = useGameContext()
   const overlayOpen = ref(false)
   const activeSituation = ref(null)
 
@@ -22,7 +22,6 @@ export function useGuideSession(stepsInput) {
 
   function collectValue(key, val) {
     context[key] = val
-    if (key === 'player_count') sessionStorage.setItem('nemesis_player_count', val)
     if (!isLast.value) stepIndex.value++
   }
 
@@ -38,7 +37,6 @@ export function useGuideSession(stepsInput) {
 
   function reset() {
     stepIndex.value = 0
-    context.player_count = null
     context.current_player = 1
     overlayOpen.value = false
     activeSituation.value = null

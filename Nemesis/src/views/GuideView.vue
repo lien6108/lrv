@@ -11,7 +11,7 @@
       <button class="primary-btn" @click="router.push('/')">返回首頁</button>
     </div>
 
-    <!-- Completion screen -->
+    <!-- Completion screen (only shown when there is no next_phase) -->
     <div v-else-if="completed" class="guide-complete">
       <div class="guide-complete__check">✓</div>
       <h2>本階段完成</h2>
@@ -120,7 +120,12 @@ function handleNext() {
   }
   if (step?.per_player) context.current_player = 1
   if (isLast.value) {
-    completed.value = true
+    const nextPhase = phaseData.value?.next_phase
+    if (nextPhase) {
+      router.push(`/guide/${nextPhase}`)
+    } else {
+      completed.value = true
+    }
   } else {
     next()
   }

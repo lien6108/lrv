@@ -2,6 +2,7 @@
   "title": "遊戲準備",
   "icon": "clipboard-list",
   "order": 1,
+  "next_phase": "player-turn",
   "steps": [
     {
       "id": "setup-player-count",
