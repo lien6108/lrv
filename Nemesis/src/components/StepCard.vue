@@ -1,5 +1,15 @@
 <template>
-  <div class="guide-card">
+  <ActionSelectCard
+    v-if="step.type === 'action-select'"
+    :step="step"
+    :context="context"
+    :is-last="isLast"
+    @next="$emit('next')"
+    @prev="$emit('prev')"
+    @open-situation="$emit('open-situation', $event)"
+    @exit="$emit('exit')"
+  />
+  <div v-else class="guide-card">
     <div class="guide-card__header">
       <button class="exit-btn" @click="$emit('exit')">✕ 離開</button>
       <div class="header-right">
@@ -61,6 +71,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import ActionSelectCard from './ActionSelectCard.vue'
 
 const props = defineProps({
   step: { type: Object, required: true },
