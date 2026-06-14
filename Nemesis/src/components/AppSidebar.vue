@@ -1,7 +1,7 @@
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ 'sidebar--open': isOpen }">
     <div class="sidebar-logo">
-      <span class="logo-icon">☠</span>
+      <AppIcon name="skull" :size="18" />
       <span class="logo-text">NEMESIS</span>
     </div>
 
@@ -14,8 +14,9 @@
         :to="`/phase/${phase.id}`"
         class="nav-item"
         active-class="nav-item--active"
+        @click="$emit('close')"
       >
-        <span class="nav-icon">{{ phase.icon }}</span>
+        <AppIcon :name="phase.icon" :size="15" />
         <span>{{ phase.title }}</span>
       </RouterLink>
 
@@ -28,8 +29,9 @@
         :to="`/phase/${rule.id}`"
         class="nav-item"
         active-class="nav-item--active"
+        @click="$emit('close')"
       >
-        <span class="nav-icon">{{ rule.icon }}</span>
+        <AppIcon :name="rule.icon" :size="15" />
         <span>{{ rule.title }}</span>
       </RouterLink>
     </nav>
@@ -37,17 +39,22 @@
 </template>
 
 <script setup>
+import AppIcon from './AppIcon.vue'
+
+defineProps({ isOpen: Boolean })
+defineEmits(['close'])
+
 const phases = [
-  { id: 'setup', icon: '📦', title: '遊戲準備' },
-  { id: 'player-turn', icon: '👤', title: '玩家回合' },
-  { id: 'event-phase', icon: '🃏', title: '事件階段' },
-  { id: 'intruder-phase', icon: '👾', title: '入侵者階段' },
+  { id: 'setup', icon: 'package', title: '遊戲準備' },
+  { id: 'player-turn', icon: 'user', title: '玩家回合' },
+  { id: 'event-phase', icon: 'layers', title: '事件階段' },
+  { id: 'intruder-phase', icon: 'shield-alert', title: '入侵者階段' },
 ]
 
 const rules = [
-  { id: 'map-rooms', icon: '🗺', title: '地圖與房間' },
-  { id: 'victory-conditions', icon: '🎯', title: '勝利條件' },
-  { id: 'character-death', icon: '💀', title: '角色死亡' },
+  { id: 'map-rooms', icon: 'map', title: '地圖與房間' },
+  { id: 'victory-conditions', icon: 'trophy', title: '勝利條件' },
+  { id: 'character-death', icon: 'skull', title: '角色死亡' },
 ]
 </script>
 
@@ -68,18 +75,14 @@ const rules = [
   gap: 8px;
   padding: 18px 16px;
   border-bottom: 1px solid var(--color-accent);
-}
-
-.logo-icon {
-  font-size: 18px;
   color: var(--color-accent);
+  flex-shrink: 0;
 }
 
 .logo-text {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: var(--color-accent);
 }
 
 .sidebar-nav {
@@ -100,13 +103,15 @@ const rules = [
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 8px;
+  padding: 9px 8px;
   border-radius: 6px;
   font-size: 13px;
   color: var(--color-text-muted);
   margin-bottom: 2px;
-  transition: background 0.1s, color 0.1s;
+  transition: background 0.15s, color 0.15s;
   border-left: 2px solid transparent;
+  cursor: pointer;
+  min-height: 38px;
 }
 
 .nav-item:hover {
@@ -120,16 +125,27 @@ const rules = [
   border-left-color: var(--color-accent);
 }
 
-.nav-icon {
-  font-size: 14px;
-  width: 20px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
 .nav-divider {
   height: 1px;
   background: var(--color-border);
   margin: 12px 8px;
+}
+
+/* Mobile: slide in as overlay */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 110;
+    width: 240px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar--open {
+    transform: translateX(0);
+  }
 }
 </style>

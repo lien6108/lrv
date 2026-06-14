@@ -1,7 +1,9 @@
 <template>
   <div class="situation-view">
     <p v-if="!component" class="loading">載入中...</p>
-    <component :is="component" v-else />
+    <div v-else class="prose">
+      <component :is="component" />
+    </div>
   </div>
 </template>
 

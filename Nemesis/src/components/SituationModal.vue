@@ -1,19 +1,29 @@
 <template>
-  <!-- Floating button -->
-  <button class="fab" @click="open = true" aria-label="緊急情境">
-    ⚡ 緊急情境
+  <!-- Floating action button -->
+  <button class="fab" @click="open = true" aria-label="緊急情境查詢">
+    <AppIcon name="zap" :size="14" />
+    緊急情境
   </button>
 
-  <!-- Modal overlay -->
+  <!-- Modal -->
   <Teleport to="body">
-    <div v-if="open" class="modal-overlay" @click.self="close" @keydown.esc="close">
-      <div class="modal" role="dialog" aria-modal="true">
+    <div v-if="open" class="modal-overlay" @click.self="close">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="緊急情境查詢">
+
         <div class="modal-header">
           <span class="modal-title">
-            <span v-if="!selected">⚡ 現在發生了什麼？</span>
-            <button v-else class="back-btn" @click="selected = null">← 返回</button>
+            <template v-if="!selected">
+              <AppIcon name="zap" :size="14" />
+              現在發生了什麼？
+            </template>
+            <button v-else class="back-btn" @click="selected = null">
+              <AppIcon name="arrow-left" :size="14" />
+              返回
+            </button>
           </span>
-          <button class="close-btn" @click="close">✕</button>
+          <button class="close-btn" @click="close" aria-label="關閉">
+            <AppIcon name="x" :size="16" />
+          </button>
         </div>
 
         <!-- Situation grid -->
@@ -25,16 +35,17 @@
             :class="`situation-btn--${s.severity}`"
             @click="select(s)"
           >
-            <span class="situation-icon">{{ s.icon }}</span>
+            <AppIcon :name="s.icon" :size="26" :stroke-width="1.5" />
             <span class="situation-label">{{ s.title }}</span>
           </button>
         </div>
 
         <!-- Situation detail -->
-        <div v-else class="situation-detail">
+        <div v-else class="situation-detail prose">
           <component :is="selectedComponent" v-if="selectedComponent" />
           <p v-else class="loading">載入中...</p>
         </div>
+
       </div>
     </div>
   </Teleport>
@@ -42,6 +53,7 @@
 
 <script setup>
 import { ref, inject, onMounted, onUnmounted } from 'vue'
+import AppIcon from './AppIcon.vue'
 
 const injectedOpen = inject('situationModalOpen', null)
 const localOpen = ref(false)
@@ -50,12 +62,12 @@ const selected = ref(null)
 const selectedComponent = ref(null)
 
 const situations = [
-  { id: 'encounter-alien', icon: '👾', title: '遭遇異形', severity: 'high' },
-  { id: 'fire', icon: '🔥', title: '發現火警', severity: 'high' },
-  { id: 'contamination', icon: '☣️', title: '污染感染', severity: 'high' },
-  { id: 'character-death', icon: '💀', title: '角色死亡', severity: 'high' },
-  { id: 'escape-pod', icon: '🚀', title: '逃脫艙啟動', severity: 'medium' },
-  { id: 'malfunction', icon: '⚙️', title: '系統故障', severity: 'medium' },
+  { id: 'encounter-alien', icon: 'shield-alert', title: '遭遇異形', severity: 'high' },
+  { id: 'fire', icon: 'flame', title: '發現火警', severity: 'high' },
+  { id: 'contamination', icon: 'biohazard', title: '污染感染', severity: 'high' },
+  { id: 'character-death', icon: 'skull', title: '角色死亡', severity: 'high' },
+  { id: 'escape-pod', icon: 'rocket', title: '逃脫艙啟動', severity: 'medium' },
+  { id: 'malfunction', icon: 'wrench', title: '系統故障', severity: 'medium' },
 ]
 
 const situationModules = import.meta.glob('../../content/situations/*.md')
@@ -98,18 +110,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   border-radius: 50px;
   box-shadow: 0 4px 20px rgba(230, 57, 70, 0.45);
   transition: transform 0.15s, box-shadow 0.15s;
-  z-index: 100;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
 }
 
 .fab:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(230, 57, 70, 0.6);
+  box-shadow: 0 6px 28px rgba(230, 57, 70, 0.65);
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -119,13 +135,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 .modal {
   background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: 12px;
   width: 100%;
   max-width: 480px;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
 }
 
 .modal-header {
@@ -134,6 +150,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-secondary);
+  z-index: 1;
 }
 
 .modal-title {
@@ -141,14 +161,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   font-weight: 700;
   color: var(--color-accent);
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .close-btn {
   color: var(--color-text-dim);
-  font-size: 16px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: color 0.1s, background 0.1s;
+  padding: 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  min-width: 32px;
+  min-height: 32px;
+  justify-content: center;
 }
 
 .close-btn:hover {
@@ -159,9 +187,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 .back-btn {
   color: var(--color-text-muted);
   font-size: 13px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: color 0.1s, background 0.1s;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
 }
 
 .back-btn:hover {
@@ -180,12 +212,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 16px;
-  transition: border-color 0.15s, background 0.15s;
+  border-radius: 10px;
+  padding: 20px 16px;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+  cursor: pointer;
+  min-height: 88px;
+  color: var(--color-text-muted);
 }
 
 .situation-btn:hover {
@@ -194,19 +229,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 .situation-btn--high:hover {
   border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .situation-btn--medium:hover {
   border-color: #f59e0b;
-}
-
-.situation-icon {
-  font-size: 28px;
+  color: #f59e0b;
 }
 
 .situation-label {
   font-size: 12px;
-  color: var(--color-text-muted);
+  font-weight: 500;
+  text-align: center;
 }
 
 .situation-detail {
@@ -216,6 +250,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 .loading {
   color: var(--color-text-muted);
   font-size: 14px;
+  text-align: center;
   padding: 20px;
+}
+
+/* Mobile: bottom sheet style */
+@media (max-width: 520px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    max-height: 90vh;
+    max-width: 100%;
+  }
 }
 </style>

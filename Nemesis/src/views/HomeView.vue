@@ -1,14 +1,18 @@
 <template>
   <div class="home">
     <div class="home-header">
-      <div class="home-icon">☠</div>
+      <div class="home-icon">
+        <AppIcon name="skull" :size="48" :stroke-width="1.5" />
+      </div>
       <h1>異形：復仇女神號</h1>
       <p class="home-subtitle">遊戲輔助系統</p>
     </div>
 
     <div class="home-cards">
       <RouterLink to="/phase/setup" class="home-card">
-        <span class="card-icon">📋</span>
+        <span class="card-icon">
+          <AppIcon name="clipboard-list" :size="28" :stroke-width="1.5" />
+        </span>
         <div>
           <h3>查看遊戲流程</h3>
           <p>遊戲準備、回合流程、各階段步驟說明</p>
@@ -16,7 +20,9 @@
       </RouterLink>
 
       <button class="home-card home-card--emergency" @click="openSituations">
-        <span class="card-icon">⚡</span>
+        <span class="card-icon card-icon--accent">
+          <AppIcon name="zap" :size="28" :stroke-width="1.5" />
+        </span>
         <div>
           <h3>緊急查詢</h3>
           <p>遭遇異形、火警、污染等突發情境處理</p>
@@ -28,22 +34,28 @@
       <h2>遊戲輪次</h2>
       <div class="phases-flow">
         <div class="phase-item">
-          <span>👤</span>
+          <AppIcon name="user" :size="20" :stroke-width="1.5" />
           <span>玩家回合</span>
         </div>
-        <div class="phase-arrow">→</div>
+        <div class="phase-arrow">
+          <AppIcon name="arrow-right" :size="15" :stroke-width="1.5" />
+        </div>
         <div class="phase-item">
-          <span>🃏</span>
+          <AppIcon name="layers" :size="20" :stroke-width="1.5" />
           <span>事件階段</span>
         </div>
-        <div class="phase-arrow">→</div>
+        <div class="phase-arrow">
+          <AppIcon name="arrow-right" :size="15" :stroke-width="1.5" />
+        </div>
         <div class="phase-item">
-          <span>👾</span>
+          <AppIcon name="shield-alert" :size="20" :stroke-width="1.5" />
           <span>入侵者階段</span>
         </div>
-        <div class="phase-arrow">→</div>
+        <div class="phase-arrow">
+          <AppIcon name="arrow-right" :size="15" :stroke-width="1.5" />
+        </div>
         <div class="phase-item phase-item--loop">
-          <span>🔄</span>
+          <AppIcon name="refresh-cw" :size="20" :stroke-width="1.5" />
           <span>下一輪</span>
         </div>
       </div>
@@ -53,6 +65,7 @@
 
 <script setup>
 import { inject } from 'vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const openSituations = inject('openSituationModal')
 </script>
@@ -69,9 +82,10 @@ const openSituations = inject('openSituationModal')
 }
 
 .home-icon {
-  font-size: 48px;
   color: var(--color-accent);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
 }
 
 h1 {
@@ -103,9 +117,11 @@ h1 {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 20px;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   text-align: left;
   width: 100%;
+  cursor: pointer;
+  color: var(--color-text);
 }
 
 .home-card:hover {
@@ -114,13 +130,17 @@ h1 {
 }
 
 .home-card--emergency:hover {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 16px var(--color-accent-dim);
+  box-shadow: 0 0 20px var(--color-accent-dim);
 }
 
 .card-icon {
-  font-size: 28px;
+  color: var(--color-text-dim);
   flex-shrink: 0;
+  display: flex;
+}
+
+.card-icon--accent {
+  color: var(--color-accent);
 }
 
 .home-card h3 {
@@ -162,10 +182,7 @@ h1 {
   padding: 14px 18px;
   font-size: 12px;
   color: var(--color-text-muted);
-}
-
-.phase-item span:first-child {
-  font-size: 20px;
+  min-width: 76px;
 }
 
 .phase-item--loop {
@@ -175,6 +192,24 @@ h1 {
 
 .phase-arrow {
   color: var(--color-text-dim);
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+@media (max-width: 580px) {
+  .home-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .phases-flow {
+    gap: 4px;
+  }
+
+  .phase-item {
+    padding: 10px 12px;
+    min-width: 62px;
+    font-size: 11px;
+  }
 }
 </style>
