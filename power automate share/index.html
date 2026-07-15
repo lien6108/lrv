@@ -1,442 +1,98 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Focus Flow</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compose 拆信展示 — 帳單警示信件欄位擷取</title>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-shell">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Focus Flow</p>
-        <h1>番茄鐘工作台</h1>
-        <p class="page-subtitle">把專案、任務與專注節奏收在同一個介面中，先選今天要推進的主專案，再深入處理它的子專案與關聯任務。</p>
-      </div>
-      <section class="summary-strip" aria-label="今日摘要">
-        <article class="summary-card">
-          <span class="summary-label">今日完成番茄鐘</span>
-          <strong class="summary-value" id="today-count">0</strong>
-          <span class="summary-meta">次專注</span>
-        </article>
-        <article class="summary-card">
-          <span class="summary-label">未完成任務</span>
-          <strong class="summary-value" id="pending-count">0</strong>
-          <span class="summary-meta">待處理</span>
-        </article>
-        <article class="summary-card">
-          <span class="summary-label">連續完成天數</span>
-          <strong class="summary-value" id="streak-count">0</strong>
-          <span class="summary-meta">天</span>
-        </article>
-      </section>
-      <div class="page-header-actions">
-        <button type="button" class="button button-ghost" id="review-open-button">覆盤</button>
-      </div>
-    </header>
+  <header class="page-header">
+    <h1>Compose 拆信展示</h1>
+    <p class="page-desc">貼上信件的 HTML 原始碼，模擬 Power Automate 的 5 個 <strong>Compose</strong> 動作，各自套用公式即時擷取出對應欄位。</p>
+  </header>
 
-    <nav class="tab-bar" aria-label="主要頁面">
-      <button class="tab-button is-active" type="button" data-view="workspace">工作台</button>
-      <button class="tab-button" type="button" data-view="projects">專案管理</button>
-      <button class="tab-button" type="button" data-view="analytics">熱力圖</button>
-    </nav>
-
-    <main>
-      <section class="view is-active" data-view-panel="workspace">
-        <div class="dashboard">
-          <section class="panel timer-panel" aria-labelledby="timer-title">
-            <div class="panel-header">
-              <div>
-                <p class="panel-kicker">專注節奏</p>
-                <h2 id="timer-title">番茄鐘</h2>
-              </div>
-              <span class="status-pill" id="timer-status">尚未開始</span>
-            </div>
-
-            <div class="timer-face">
-              <div class="timer-ring">
-                <div class="timer-inner">
-                  <p class="timer-caption">本輪剩餘時間</p>
-                  <div class="timer-value" id="timer-display" aria-live="polite">25:00</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="current-task-card">
-              <span class="current-task-label">目前專注任務</span>
-              <strong id="current-task-name">尚未選擇任務</strong>
-              <span class="current-project-inline" id="current-project-name">尚未指定專案</span>
-            </div>
-
-            <div class="button-row">
-              <button id="start-button" class="button button-primary">開始</button>
-              <button id="pause-button" class="button button-secondary">暫停</button>
-              <button id="reset-button" class="button button-ghost">重設</button>
-              <button id="complete-button" class="button button-accent">完成一顆番茄</button>
-            </div>
-          </section>
-
-          <section class="panel tasks-panel" aria-labelledby="tasks-title">
-            <div class="panel-header">
-              <div>
-                <p class="panel-kicker">任務管理</p>
-                <h2 id="tasks-title">任務清單</h2>
-              </div>
-            </div>
-
-            <form class="task-entry" id="task-form">
-              <label class="sr-only" for="task-input">新增任務</label>
-              <input id="task-input" name="task" type="text" placeholder="輸入下一個要推進的任務，也可以先指派專案" maxlength="80" autocomplete="off">
-              <select id="task-project-select" name="project"></select>
-              <button class="button button-primary" type="submit">新增任務</button>
-            </form>
-
-            <div class="task-toolbar">
-              <p class="task-helper">任務可以隨時調整到其他專案或子專案，關聯專案名稱會同步顯示完整階層。</p>
-            </div>
-
-            <ul class="task-list" id="task-list" aria-live="polite"></ul>
-            <div class="empty-state hidden" id="task-empty-state">
-              <p>目前還沒有任務，先新增一筆今天要推進的事項吧。</p>
-            </div>
-          </section>
-
-          <section class="panel meetings-panel" aria-labelledby="meetings-title">
-            <div class="panel-header">
-              <div>
-                <p class="panel-kicker">會議紀錄</p>
-                <h2 id="meetings-title">今日會議</h2>
-              </div>
-              <button type="button" class="button button-ghost" id="meeting-import-toggle">批次匯入</button>
-            </div>
-
-            <form class="meeting-entry" id="meeting-form">
-              <label class="sr-only" for="meeting-input">會議名稱</label>
-              <input id="meeting-input" name="meeting" type="text" placeholder="輸入會議名稱" maxlength="80" autocomplete="off">
-              <label class="sr-only" for="meeting-time-input">開始時間</label>
-              <input id="meeting-time-input" name="startTime" type="time" required>
-              <label class="sr-only" for="meeting-duration-input">時長（分鐘）</label>
-              <input id="meeting-duration-input" name="duration" type="number" min="1" placeholder="時長（分鐘）" required>
-              <label class="sr-only" for="meeting-project-select">所屬專案</label>
-              <select id="meeting-project-select" name="project"></select>
-              <button class="button button-primary" type="submit">新增會議</button>
-            </form>
-
-            <ul class="meeting-list" id="meeting-list" aria-live="polite"></ul>
-            <div class="empty-state hidden" id="meeting-empty-state">
-              <p>今天還沒有會議紀錄，新增一筆或用批次匯入貼上彙整。</p>
-            </div>
-
-            <div class="meeting-import-panel hidden" id="meeting-import-panel">
-              <label class="sr-only" for="meeting-import-textarea">貼上彙整文字</label>
-              <textarea id="meeting-import-textarea" rows="8" placeholder="貼上包含【今日會議】與【今日任務】的彙整文字"></textarea>
-              <div class="meeting-import-actions">
-                <button type="button" class="button button-primary" id="meeting-import-parse">解析</button>
-              </div>
-              <div class="import-preview hidden" id="meeting-import-preview">
-                <p class="import-preview-summary" id="meeting-import-summary"></p>
-                <div class="import-preview-group">
-                  <h4>會議</h4>
-                  <ul id="meeting-import-preview-meetings"></ul>
-                </div>
-                <div class="import-preview-group">
-                  <h4>任務</h4>
-                  <ul id="meeting-import-preview-tasks"></ul>
-                </div>
-                <div class="import-preview-group import-preview-error hidden" id="meeting-import-preview-unparsed-group">
-                  <h4>無法辨識</h4>
-                  <ul id="meeting-import-preview-unparsed"></ul>
-                </div>
-                <div class="meeting-import-actions">
-                  <button type="button" class="button button-primary" id="meeting-import-confirm">確認匯入</button>
-                  <button type="button" class="button button-ghost" id="meeting-import-cancel">取消</button>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </section>
-
-      <section class="view" data-view-panel="projects">
-        <section class="panel projects-panel" aria-labelledby="projects-title">
-          <div class="panel-header">
-            <div>
-              <p class="panel-kicker">專案管理</p>
-              <h2 id="projects-title">主專案工作台</h2>
-            </div>
-          </div>
-
-          <form class="project-entry" id="project-form">
-            <label class="sr-only" for="project-input">新增專案</label>
-            <input id="project-input" name="project" type="text" placeholder="新增主專案或子專案" maxlength="60" autocomplete="off">
-            <label class="sr-only" for="project-parent-select">上層專案</label>
-            <select id="project-parent-select" name="parent"></select>
-            <button class="button button-primary" type="submit">新增專案</button>
-          </form>
-
-          <div class="project-workbench">
-            <aside class="project-browser" aria-labelledby="project-browser-title">
-              <div class="project-browser-head">
-                <div>
-                  <p class="panel-kicker">主專案</p>
-                  <h3 id="project-browser-title">快速切換</h3>
-                </div>
-                <span class="browser-count" id="root-project-count">0 個主專案</span>
-              </div>
-              <ul class="project-root-list" id="project-root-list" aria-live="polite"></ul>
-              <div class="empty-state hidden" id="project-empty-state">
-                <p>目前還沒有專案，先建立一個主專案吧。</p>
-              </div>
-            </aside>
-
-            <section class="project-detail" aria-labelledby="project-detail-title">
-              <div class="project-detail-card project-detail-hero">
-                <div class="project-detail-copy">
-                  <span class="project-detail-kicker">目前主專案</span>
-                  <h3 id="project-detail-title">尚未選擇專案</h3>
-                  <p id="project-detail-description">從左側選擇一個主專案後，這裡會展開該專案的摘要、子專案與關聯任務。</p>
-                </div>
-                <div class="project-detail-tag" id="project-detail-status">尚未選擇</div>
-              </div>
-
-              <div class="project-detail-metrics" id="project-detail-metrics">
-                <article class="project-stat">
-                  <span class="project-stat-label">子專案</span>
-                  <strong class="project-stat-value" id="detail-child-count">0</strong>
-                </article>
-                <article class="project-stat">
-                  <span class="project-stat-label">未完成任務</span>
-                  <strong class="project-stat-value" id="detail-open-task-count">0</strong>
-                </article>
-                <article class="project-stat">
-                  <span class="project-stat-label">總任務數</span>
-                  <strong class="project-stat-value" id="detail-total-task-count">0</strong>
-                </article>
-              </div>
-
-              <div class="project-detail-grid">
-                <section class="project-detail-card" aria-labelledby="child-projects-title">
-                  <div class="section-head">
-                    <div>
-                      <p class="panel-kicker">子專案</p>
-                      <h4 id="child-projects-title">專案拆解</h4>
-                    </div>
-                  </div>
-                  <ul class="detail-list" id="child-project-list"></ul>
-                  <div class="empty-inline" id="child-project-empty">這個主專案目前還沒有子專案。</div>
-                </section>
-
-                <section class="project-detail-card" aria-labelledby="related-tasks-title">
-                  <div class="section-head">
-                    <div>
-                      <p class="panel-kicker">關聯任務</p>
-                      <h4 id="related-tasks-title">專案任務</h4>
-                    </div>
-                  </div>
-                  <ul class="detail-list" id="related-task-list"></ul>
-                  <div class="empty-inline" id="related-task-empty">這個主專案底下目前還沒有任務。</div>
-                </section>
-              </div>
-            </section>
-          </div>
-        </section>
-      </section>
-
-      <section class="view" data-view-panel="analytics">
-        <section class="panel analytics-panel" aria-labelledby="heatmap-title">
-          <div class="panel-header">
-            <div>
-              <p class="panel-kicker">30 天回顧</p>
-              <h2 id="heatmap-title">過去 30 天完成熱力圖</h2>
-            </div>
-          </div>
-          <p class="panel-description">用顏色濃淡快速看出最近的專注節奏，幫助你發現高產日與需要調整的空檔。</p>
-
-          <div class="heatmap-card">
-            <div class="heatmap-grid" id="heatmap-grid" role="img" aria-label="過去 30 天專注完成熱力圖"></div>
-            <div class="legend" aria-label="熱力圖圖例">
-              <span class="legend-label">少</span>
-              <div class="legend-scale">
-                <span class="legend-swatch level-0"></span>
-                <span class="legend-swatch level-1"></span>
-                <span class="legend-swatch level-2"></span>
-                <span class="legend-swatch level-3"></span>
-              </div>
-              <span class="legend-label">多</span>
-            </div>
-            <div class="legend-text">
-              <span>0</span>
-              <span>1-2</span>
-              <span>3-4</span>
-              <span>5+</span>
-            </div>
-          </div>
-        </section>
-      </section>
-
-      <section class="view" data-view-panel="review">
-        <section class="panel review-panel" aria-labelledby="review-title">
-          <div class="panel-header">
-            <div>
-              <p class="panel-kicker">工作覆盤</p>
-              <h2 id="review-title">覆盤</h2>
-            </div>
-            <button type="button" class="button button-ghost" id="review-close-button">返回</button>
-          </div>
-
-          <div class="review-date-picker">
-            <label for="review-date-input">選擇要覆盤的日期</label>
-            <input type="date" id="review-date-input">
-          </div>
-
-          <div class="review-content hidden" id="review-content">
-            <section class="review-section" aria-labelledby="review-completed-title">
-              <h3 id="review-completed-title">今天完成的事</h3>
-              <ul class="review-list" id="review-completed-list"></ul>
-              <div class="empty-inline hidden" id="review-completed-empty">這天沒有完成的任務。</div>
-            </section>
-
-            <section class="review-section" aria-labelledby="review-inprogress-title">
-              <h3 id="review-inprogress-title">今天推進中的事</h3>
-              <ul class="review-list" id="review-inprogress-list"></ul>
-              <div class="empty-inline hidden" id="review-inprogress-empty">目前沒有進行中的任務。</div>
-            </section>
-
-            <section class="review-section" aria-labelledby="review-meetings-title">
-              <h3 id="review-meetings-title">今天的會議</h3>
-              <ul class="review-list" id="review-meetings-list"></ul>
-              <div class="empty-inline hidden" id="review-meetings-empty">這天沒有會議紀錄。</div>
-            </section>
-
-            <section class="review-section" aria-labelledby="review-reflection-title">
-              <h3 id="review-reflection-title">復盤筆記</h3>
-              <div class="review-question">
-                <label for="review-answer-0">做得好的地方？</label>
-                <textarea id="review-answer-0" rows="3" placeholder="可以留空跳過"></textarea>
-              </div>
-              <div class="review-question">
-                <label for="review-answer-1">卡住或需要調整的地方？</label>
-                <textarea id="review-answer-1" rows="3" placeholder="可以留空跳過"></textarea>
-              </div>
-              <div class="review-question">
-                <label for="review-answer-2">明天的一個小改進？</label>
-                <textarea id="review-answer-2" rows="3" placeholder="可以留空跳過"></textarea>
-              </div>
-            </section>
-
-            <section class="review-section" aria-labelledby="review-todos-title">
-              <div class="section-head">
-                <h3 id="review-todos-title">明天要做的事</h3>
-              </div>
-              <ul class="review-todo-list" id="review-todo-list"></ul>
-              <form class="review-todo-add" id="review-todo-add-form">
-                <label class="sr-only" for="review-todo-add-input">新增待辦</label>
-                <input type="text" id="review-todo-add-input" placeholder="新增一件明天要做的事" maxlength="80" autocomplete="off">
-                <button type="submit" class="button button-inline">新增</button>
-              </form>
-            </section>
-
-            <div class="button-row">
-              <button type="button" class="button button-primary" id="review-generate-button">產生 Markdown</button>
-            </div>
-
-            <div class="review-output hidden" id="review-output">
-              <label class="sr-only" for="review-output-textarea">覆盤 Markdown</label>
-              <textarea id="review-output-textarea" rows="16" readonly></textarea>
-              <div class="button-row">
-                <button type="button" class="button button-secondary" id="review-copy-button">複製 Markdown</button>
-                <button type="button" class="button button-ghost" id="review-download-button">下載</button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </section>
-    </main>
-  </div>
-
-  <template id="project-root-item-template">
-    <li class="project-root-item">
-      <button type="button" class="project-root-button">
-        <span class="project-root-dot" aria-hidden="true"></span>
-        <span class="project-root-copy">
-          <strong class="project-root-title"></strong>
-          <span class="project-root-meta"></span>
-        </span>
-        <span class="project-root-state"></span>
-      </button>
-    </li>
-  </template>
-
-  <template id="detail-item-template">
-    <li class="detail-item">
-      <div class="detail-item-copy">
-        <strong class="detail-item-title"></strong>
-        <span class="detail-item-meta"></span>
-      </div>
-      <span class="detail-item-state"></span>
-    </li>
-  </template>
-
-  <template id="meeting-item-template">
-    <li class="meeting-item">
-      <div class="meeting-display">
-        <div class="meeting-copy">
-          <strong class="meeting-title"></strong>
-          <span class="meeting-meta"></span>
-        </div>
-        <div class="meeting-actions">
-          <button type="button" class="button button-inline meeting-edit">編輯</button>
-          <button type="button" class="button button-inline meeting-delete">刪除</button>
+  <main class="page-body">
+    <section class="card input-card">
+      <div class="card-header">
+        <span class="card-icon input-icon" aria-hidden="true">&#9993;</span>
+        <div>
+          <h2 class="card-title">信件 HTML</h2>
+          <p class="card-subtitle">觸發 (Trigger) · 完整信件內容</p>
         </div>
       </div>
-      <div class="meeting-edit-form">
-        <label class="sr-only">會議名稱</label>
-        <input type="text" class="meeting-edit-title" maxlength="80">
-        <label class="sr-only">開始時間</label>
-        <input type="time" class="meeting-edit-time">
-        <label class="sr-only">時長（分鐘）</label>
-        <input type="number" class="meeting-edit-duration" min="1">
-        <label class="sr-only">所屬專案</label>
-        <select class="meeting-edit-project"></select>
-        <div class="meeting-edit-actions">
-          <button type="button" class="button button-primary meeting-save">儲存</button>
-          <button type="button" class="button button-ghost meeting-cancel-edit">取消</button>
-        </div>
-      </div>
-    </li>
-  </template>
+      <label class="field-label" for="html-input">輸入 (Inputs)</label>
+      <textarea id="html-input" class="html-input" placeholder="在這裡貼上完整信件的 HTML 原始碼..." spellcheck="false">$207.00 unusual spend
 
-  <template id="review-todo-item-template">
-    <li class="review-todo-item">
-      <label class="sr-only">待辦事項</label>
-      <input type="text" class="review-todo-input" maxlength="80">
-      <button type="button" class="button button-inline review-todo-delete">刪除</button>
-    </li>
-  </template>
+ Apptio, an IBM Company
+[s3.amazonaws.com/cloudability-frontend/…/Apptio-anIBMCompany-Cloudability-logo.png]Go
+to Cloudability [app-au.apptio.com/cloudability]
 
-  <template id="task-item-template">
-    <li class="task-item">
-      <button type="button" class="task-main">
-        <span class="task-check" aria-hidden="true"></span>
-        <span class="task-copy">
-          <strong class="task-title"></strong>
-          <span class="task-meta"></span>
-        </span>
-      </button>
-      <div class="task-project-editor">
-        <label class="sr-only">任務專案</label>
-        <select class="task-project-select"></select>
-      </div>
-      <div class="task-actions">
-        <button type="button" class="button button-inline task-select">設為目前任務</button>
-        <button type="button" class="button button-inline task-toggle">完成</button>
-      </div>
-    </li>
-  </template>
+
+
+!
+[s3.amazonaws.com/cloudability-frontend/…/red_alert_white_bg_symbol.png]Anomaly
+AlertWe have detected some unusual spending. Please see the details below.
+
+UNUSUAL SPEND$207.00($312.75 total)
+
+Anomaly Details
+[app-au.apptio.com/cloudability#/anomalies?unusualSpend=207.0&amp;view=0&amp;…]
+
+ACCOUNT NAMEcubaws-comlxboa01-uat
+
+SERVICEAWS Glue
+
+USAGE FAMILYCompute Duration
+
+
+
+TYPE1-Day
+
+DATEJul 07, 2026
+
+VIEWShowing all data.
+
+
+
+Business Dimensions
+
+AICOE: AWS_成本中心
+
+The value of Unusual Spend is subject to change over time as the cost file is
+updated.
+
+You are receiving this email because you signed up for Apptio Cloudability.
+Update your Anomaly notification preferences.
+[app-au.apptio.com/cloudability#/anomalies?subscription=af75c51d-c1a7-40be-a…&amp;…]
+
+
+Question? Need help? File a ticket through our Apptio Support Center
+[support.apptio.com/s/createrecord/New_Cloudablity_Case].© 2025 Apptio,
+an IBM Company. 11100 NE 8th St, Bellevue, WA 98004
+
+
+
+Twitter [cdn.cloudability.com/assets/email/Icon-Tw.png]
+[twitter.com/cloudability]Facebook
+[cdn.cloudability.com/assets/email/Icon-FB.png]
+[facebook.com/Cloudability]LinkedIn
+[cdn.cloudability.com/assets/email/Icon-In.png]
+[linkedin.com/company/cloudability]
+
+[chime-au.apptio.com/service/…/ced3b887b52a…]</textarea>
+    </section>
+
+    <p class="pending-note">⚠️「非預期花費」已經套用你提供的正式 Power Automate 公式；其餘 4 個是依你貼的範例信件推導出來的，還沒經過你確認，實際準確度以你的正式流程為準。</p>
+
+    <div class="compose-list" id="compose-list">
+      <!-- 5 個 compose row 由 app.js 動態產生 -->
+    </div>
+  </main>
+
+  <footer class="page-footer">
+    <p>純前端運算，貼上的內容不會上傳到任何伺服器。</p>
+  </footer>
 
   <script src="app.js"></script>
 </body>
